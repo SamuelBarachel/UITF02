@@ -1,0 +1,5 @@
+# Pandoc defaults for rendering the UITF2 manuscript from the repository root.
+resource-path:
+  - .
+  - figures
+  - figures_matlab/pptx_deck_assets

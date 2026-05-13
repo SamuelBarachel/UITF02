@@ -178,7 +178,7 @@ The supplemental multi-panel diagnostic provides an independent analysis product
 | Cold | \(1\,\mu\mathrm{A}\) | \(5.00 \times 10^{15}\,\mathrm{e}^{-}\,\mathrm{cm}^{-2}\) | \(4.97 \times 10^{15}\,\mathrm{e}^{-}\,\mathrm{cm}^{-2}\) | \(9.94 \times 10^{15}\,\mathrm{e}^{-}\,\mathrm{cm}^{-2}\) | \(1.32 \times 10^{6}\,\mathrm{Gy}\) | \(2.63 \times 10^{6}\,\mathrm{Gy}\) | \(0.064\,\mathrm{W}\) |
 | Warm | \(10\,\mu\mathrm{A}\) | \(1.00 \times 10^{17}\,\mathrm{e}^{-}\,\mathrm{cm}^{-2}\) | \(9.97 \times 10^{16}\,\mathrm{e}^{-}\,\mathrm{cm}^{-2}\) | \(1.99 \times 10^{17}\,\mathrm{e}^{-}\,\mathrm{cm}^{-2}\) | \(2.64 \times 10^{7}\,\mathrm{Gy}\) | \(5.29 \times 10^{7}\,\mathrm{Gy}\) | \(0.644\,\mathrm{W}\) |
 
-The cold delivered fluence is within approximately 1% of the target value, and the warm delivered fluence is within approximately 1% of the target value. This validates the current-time-fluence scaling used for the proposal operating points.
+The cold delivered fluence is within approximately one percent of the target value, and the warm delivered fluence is within approximately one percent of the target value. This validates the current-time-fluence scaling used for the proposal operating points.
 
 ## 5. Discussion
 
