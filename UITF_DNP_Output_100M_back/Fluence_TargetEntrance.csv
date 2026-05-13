@@ -1,0 +1,7 @@
+# TOPAS Version: 3.9
+# Parameter File: UITF2-100M-back.txt
+# Results for scorer: FluenceEntrance
+# Filtered by: OnlyIncludeParticlesNamed = 1 "e-"
+# Scored in component: FluencePlaneIn
+# Fluence ( /mm2 ) : Sum   
+527.2466430664062

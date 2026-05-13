@@ -1,0 +1,10 @@
+# Back-side 10M production wrapper for the v2 proposal front+back protocol.
+# Run this file for the beam entering the downstream/back face of the target.
+
+includeFile = UITF2-050426.txt
+
+i:Ts/NumberOfHistoriesInRun = 10000000
+i:So/Beam/NumberOfHistoriesInRun = 0
+i:So/BackBeam/NumberOfHistoriesInRun = 10000000
+i:Ts/ShowHistoryCountAtInterval = 100000
+s:Ts/OutputDirectory = "./UITF_DNP_Output_10M_back"

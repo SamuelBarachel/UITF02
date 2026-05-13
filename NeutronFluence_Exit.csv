@@ -1,0 +1,7 @@
+# TOPAS Version: 3.9
+# Parameter File: UITF2-10M-back.txt
+# Results for scorer: NeutronFluence
+# Filtered by: OnlyIncludeParticlesNamed = 1 "neutron"
+# Scored in component: FluencePlaneOut
+# Fluence ( /mm2 ) : Sum   
+0

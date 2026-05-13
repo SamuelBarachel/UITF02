@@ -1,0 +1,885 @@
+# ==============================================================================
+# TOPAS Monte Carlo Simulation: DNP Target Cold Irradiation Study
+# Jefferson Lab Upgraded Injector Test Facility (UITF)
+# ==============================================================================
+#
+# PURPOSE:
+#   Simulate the 8 MeV electron beam irradiation of solid ammonia (ND3/NH3)
+#   and deuterated butanol targets in a variable-temperature cryostat at the
+#   UITF. Score DoseToMedium throughout target volumes, characterize the
+#   longitudinal dose falloff, determine optimal beam-spreading aluminum window
+#   thickness, and predict the dose uniformity and deposited energy as a
+#   function of irradiation depth for both warm (87 K) and cold (2-4 K)
+#   irradiation configurations.
+#
+# PHYSICS MODEL:
+#   - Full electromagnetic cascade (Geant4 Livermore + G4EmStandard_opt4)
+#   - Accurate electron stopping powers in cryogenic ammonia phases
+#   - Multiple scattering via Urban model (tuned for sub-cm targets)
+#   - Bremsstrahlung, Moller scattering, ionization explicitly tracked
+#
+# GEOMETRY (real dimensions from proposal):
+#   - Beam spreader: Al window (variable thickness, default 0.5 mm)
+#   - Cryostat entrance window: 0.1 mm Al (upstream vacuum barrier)
+#   - Cryogenic liquid bath: LHe or LAr depending on phase (toggleable)
+#   - Target sample holder: Hexagonal cage, 6.5 cm length, 1.42 cm radius
+#   - Target material: ND3 or NH3 spherical beads (~1 mm radius)
+#     represented as a uniform slab for dosimetry + a bead geometry branch
+#   - Beam interaction area from proposal: 6.42 cm^2 (r ~ 14.3 mm rastered)
+#
+# KEY OBSERVABLES:
+#   1. DoseToMedium (Gy) vs. depth in ND3/NH3 slab
+#   2. Fluence (e-/cm2) map — correlated to proposal dose targets:
+#        Warm dose: 1e17 e-/cm2
+#        Cold dose: 5e15 e-/cm2
+#   3. Lateral dose uniformity across 14 mm rastered beam radius
+#   4. Energy deposition in Al windows (heat load estimate for cryostat)
+#   5. Bremsstrahlung photon spectrum exiting downstream (shielding design)
+#   6. Backscatter fraction (relevant to front vs. back irradiation geometry)
+#
+# ADVANCED PREDICTION FEATURES:
+#   - Parametric scoring: DoseToMedium scored in 1 mm depth bins (slab) and
+#     in individual 1 mm radius spherical bead geometry (realistic geometry)
+#   - Electron fluence spectrum at target entrance and exit faces
+#   - Secondary particle production: photons, neutrons (via Bremsstrahlung)
+#   - Linear energy transfer (LET) spectrum for radical formation modeling
+#   - Range-energy relationship verification at 8 MeV in cryogenic ND3
+#   - Front vs. back irradiation symmetry check
+#   - Dose-volume histogram (DVH) approximation via radial dose binning
+#
+# REFERENCE CONDITIONS (from proposal):
+#   Beam energy/current: 8 MeV, 1-10 uA, rastered to ~14 mm radius
+#   Warm irradiation: 10 uA, 87 K (LAr bath), 8 MeV electrons
+#   Cold irradiation:  1 uA,  2-4 K (LHe bath), 8 MeV electrons
+#   Target dose (warm): ~1e17 e-/cm2; 2.85 hr/side, front + back
+#   Target dose (cold): ~5e15 e-/cm2; 1.42 hr/side, front + back
+#   Batch mass: 250 mg material in a variable-temperature cryostat holder
+#   Holder geometry: cylinder/hex cage envelope, L = 6.5 cm, R = 1.42 cm
+#   Material density (solid ND3 at 2 K): ~1.007 g/cm3
+#   Material density (solid NH3 at 87 K): ~0.730 g/cm3 (liquid-like phase)
+# AUTHOR: SAMUEL TAKWIRIRA
+# COLLABORATORS: UNH DNP Group / Jefferson Lab Target Group collaboration
+# DATE: May 2026
+# TOPAS VERSION: 3.9+ (Geant4 10.7.x backend required)
+# ==============================================================================
+
+
+# ==============================================================================
+# SECTION 0 — GLOBAL SIMULATION SETTINGS
+# ==============================================================================
+
+# Random seed for reproducibility (set two seeds for full reproducibility)
+i:Ts/Seed = 42
+s:Ts/G4DataDirectory = "/Applications/G4Data"
+
+# Number of histories — scale to improve Monte Carlo statistics.
+# Current v2 production setting: 1e7 primary electrons per irradiation side.
+# For debugging, override both Ts and So/Beam to 20000 from the command line.
+# DIAGNOSTIC MODE — set Ts/NumberOfHistoriesInRun=1, NumberOfThreads=1, TrackingVerbosity=1
+# to trace one electron step-by-step and confirm geometry/beam direction.
+# For a quick run use 20000 histories; increase for production-quality statistics.
+# V2 production default uses 8 threads on this workstation.
+i:Ts/NumberOfThreads          = 8
+i:Ts/NumberOfHistoriesInRun   = 20000
+
+# Verbosity (set 0 for production, 1 for commissioning checks)
+i:Ts/ParameterizationVerbosity = 0
+i:Ts/TrackingVerbosity = 0
+b:Ts/ShowHistoryCountOnSingleLine = "True"
+i:Ts/ShowHistoryCountAtInterval = 100000
+i:Ts/ParameterizationErrorMaxReports = 20
+b:Ts/PauseBeforeQuit = "False"
+b:Ge/CheckForUnusedComponents = "False"
+
+# Output directory
+s:Ts/OutputDirectory = "./UITF_DNP_Output"
+
+
+# ==============================================================================
+# SECTION 1 — PHYSICS LIST (PhD-level EM Physics)
+# ==============================================================================
+#
+# G4EmStandard_opt4: highest accuracy EM, uses Urban multiple scattering
+# with a step limit algorithm critical for thin target / window stacks.
+# Livermore is used for electrons/photons below 1 MeV (backscatter accuracy).
+# Production cuts are tightened from the TOPAS default to correctly model
+# the steep Bragg-like dose fall-off in the 1-2 cm ND3 target depth.
+
+sv:Ph/Default/Modules = 3 "g4em-standard_opt4" "g4decay" "g4radioactivedecay"
+
+# Override electron/photon/positron production cuts (in mm)
+# Tight cuts needed to resolve 1 mm depth bins in target
+d:Ph/Default/CutForElectron  = 0.05 mm
+d:Ph/Default/CutForGamma     = 0.05 mm
+d:Ph/Default/CutForPositron  = 0.05 mm
+d:Ph/Default/CutForProton    = 0.05 mm
+
+# Step limiter: maximum step in target = 0.1 mm (critical for dose profile accuracy)
+# Applied via StepMax in each scoring component's medium
+d:Ph/Default/MaxStepSize = 0.1 mm
+
+# Fluorescence and Auger production (relevant for K-shell in N, D)
+b:Ph/Default/Fluorescence = "True"
+b:Ph/Default/Auger        = "True"
+b:Ph/Default/AugerCascade = "True"
+b:Ph/Default/PIXE         = "False"
+
+# Mott cross section for electron elastic scattering (more accurate at 8 MeV)
+b:Ph/Default/UseMottCrossSection = "True"
+
+
+# ==============================================================================
+# SECTION 2 — MATERIALS
+# ==============================================================================
+#
+# TOPAS/Geant4 does not have built-in cryogenic solid ND3 or NH3.
+# We define them from first principles using NIST stopping power data.
+# Key densities:
+#   Solid ND3 at 2 K:   1.007 g/cm3  (close-packed hexagonal crystal)
+#   Solid ND3 at 77 K:  0.943 g/cm3  (stored in LN2)
+#   Liquid NH3 at 87 K: 0.682 g/cm3  (LAr temperature, slightly superheated)
+#   Solid NH3 at 2 K:   0.817 g/cm3
+#   Liquid Argon:       1.396 g/cm3
+#   Liquid Helium:      0.125 g/cm3
+#   Solid Al (window):  2.699 g/cm3
+
+# --- Solid ND3 at 2 K (primary cold irradiation target) ---
+# Full manual definition for deuterated ammonia (ND3) — G4_AMMONIA contains H, not D,
+# so CloneFromMaterial is NOT used here. Composition defined from first principles.
+# N: 1 atom (14.007 u), D: 3 atoms (2.014 u each)
+# Elemental fractions by mass: N = 14.007/(14.007+3*2.014) = 0.6985
+#                              D = 6.042/(20.049) = 0.3014
+# Note: Geant4 treats D as a separate element "Deuterium"
+i:Is/H2/Z = 1
+i:Is/H2/N = 2
+d:Is/H2/A = 2.01410178 g/mole
+
+s:El/Deuterium/Symbol             = "D"
+sv:El/Deuterium/IsotopeNames      = 1 "H2"
+uv:El/Deuterium/IsotopeAbundances = 1 100.
+# Full manual definition:
+s:Ma/SolidND3_2K/DefaultColor           = "blue"
+d:Ma/SolidND3_2K/Density                = 1.007 g/cm3
+s:Ma/SolidND3_2K/State                  = "Solid"
+d:Ma/SolidND3_2K/MeanExcitationEnergy   = 53.7 eV
+i:Ma/SolidND3_2K/NumberOfComponents     = 2
+sv:Ma/SolidND3_2K/Components            = 2 "Nitrogen" "Deuterium"
+uv:Ma/SolidND3_2K/Fractions             = 2 0.698541 0.301459
+
+# --- Solid ND3 at 77 K (stored under LN2) ---
+s:Ma/SolidND3_77K/DefaultColor          = "cyan"
+d:Ma/SolidND3_77K/Density               = 0.943 g/cm3
+s:Ma/SolidND3_77K/State                 = "Solid"
+d:Ma/SolidND3_77K/MeanExcitationEnergy  = 53.7 eV
+i:Ma/SolidND3_77K/NumberOfComponents    = 2
+sv:Ma/SolidND3_77K/Components           = 2 "Nitrogen" "Deuterium"
+uv:Ma/SolidND3_77K/Fractions            = 2 0.698541 0.301459
+
+# --- Solid NH3 at 87 K (warm irradiation target) ---
+s:Ma/SolidNH3_87K/DefaultColor          = "green"
+d:Ma/SolidNH3_87K/Density               = 0.730 g/cm3
+s:Ma/SolidNH3_87K/State                 = "Solid"
+d:Ma/SolidNH3_87K/MeanExcitationEnergy  = 53.7 eV
+i:Ma/SolidNH3_87K/NumberOfComponents    = 2
+sv:Ma/SolidNH3_87K/Components           = 2 "Nitrogen" "Hydrogen"
+uv:Ma/SolidNH3_87K/Fractions            = 2 0.821906 0.178094
+
+# --- Deuterated Butanol: C4D9OD ---
+# Formula: C4H9OD with all H replaced by D
+# MW = 4*12 + 9*2.014 + 16 + 2.014 = 48+18.126+16+2.014 = 84.14 g/mol
+# Mass fractions: C=57.1%, D=24.0%, O=19.0% (approx)
+s:Ma/dButanol/DefaultColor          = "yellow"
+d:Ma/dButanol/Density               = 0.970 g/cm3
+s:Ma/dButanol/State                 = "Solid"
+d:Ma/dButanol/MeanExcitationEnergy  = 64.5 eV
+i:Ma/dButanol/NumberOfComponents    = 3
+sv:Ma/dButanol/Components           = 3 "Carbon" "Deuterium" "Oxygen"
+uv:Ma/dButanol/Fractions            = 3 0.5710 0.2397 0.1903
+
+# --- Liquid Argon bath (warm irradiation environment) ---
+s:Ma/LiquidArgon/DefaultColor         = "grey"
+d:Ma/LiquidArgon/Density              = 1.396 g/cm3
+s:Ma/LiquidArgon/State                = "Liquid"
+d:Ma/LiquidArgon/MeanExcitationEnergy = 188.0 eV
+i:Ma/LiquidArgon/NumberOfComponents   = 1
+sv:Ma/LiquidArgon/Components          = 1 "Argon"
+uv:Ma/LiquidArgon/Fractions           = 1 1.0
+
+# --- Liquid Helium bath (cold irradiation environment) ---
+s:Ma/LiquidHelium/DefaultColor         = "white"
+d:Ma/LiquidHelium/Density              = 0.125 g/cm3
+s:Ma/LiquidHelium/State                = "Liquid"
+d:Ma/LiquidHelium/MeanExcitationEnergy = 41.8 eV
+i:Ma/LiquidHelium/NumberOfComponents   = 1
+sv:Ma/LiquidHelium/Components          = 1 "Helium"
+uv:Ma/LiquidHelium/Fractions           = 1 1.0
+
+
+# ==============================================================================
+# SECTION 3 — GEOMETRY
+# ==============================================================================
+#
+# World → Beampipe vacuum → Al beam-spreader window → Al entrance window
+#       → Cryostat wall + bath (LHe or LAr) → hex sample holder → target material
+#       → Cryostat bath (downstream) → Al exit window → Dump
+#
+# All components are centered on the Z-axis (beam axis).
+# Z=0 is defined at the upstream face of the TARGET MATERIAL.
+# Positive Z is downstream (beam direction).
+
+# --- World Volume ---
+s:Ge/World/Type     = "TsBox"
+s:Ge/World/Material = "Vacuum"
+d:Ge/World/HLX      = 15.0 cm
+d:Ge/World/HLY      = 15.0 cm
+d:Ge/World/HLZ      = 50.0 cm
+
+# --- Beampipe (upstream vacuum, 30 cm long) ---
+s:Ge/Beampipe/Type         = "TsCylinder"
+s:Ge/Beampipe/Parent       = "World"
+s:Ge/Beampipe/Material     = "Vacuum"
+d:Ge/Beampipe/Rmax         = 3.0 cm
+d:Ge/Beampipe/Rmin         = 0.0 cm
+d:Ge/Beampipe/HL           = 14.75 cm
+d:Ge/Beampipe/TransZ       = -16.25 cm  # ends at -1.5 cm, safely upstream of AlSpreader
+
+# --- Aluminum Beam-Spreader Window (variable thickness for scoping) ---
+# Default: 0.5 mm Al. This broadens the 8 MeV beam to the ~14 mm radius
+# needed to cover the 6.42 cm2 interaction area of the sample holder.
+# The parametric study can sweep AlWindow_HL from 0.1 to 1.0 mm.
+d:Ge/AlSpreader/HL_param   = 0.25 mm     # HALF-length in Z → full = 0.5 mm
+s:Ge/AlSpreader/Type       = "TsCylinder"
+s:Ge/AlSpreader/Parent     = "World"
+s:Ge/AlSpreader/Material   = "G4_Al"
+d:Ge/AlSpreader/Rmax       = 2.5 cm
+d:Ge/AlSpreader/Rmin       = 0.0 cm
+d:Ge/AlSpreader/HL         = Ge/AlSpreader/HL_param mm
+d:Ge/AlSpreader/TransZ     = -1.3 cm     # 1 cm upstream of cryostat window
+
+# --- Cryostat Entrance Window (0.1 mm Al — vacuum barrier) ---
+s:Ge/CryoWinIn/Type     = "TsCylinder"
+s:Ge/CryoWinIn/Parent   = "World"
+s:Ge/CryoWinIn/Material = "G4_Al"
+d:Ge/CryoWinIn/Rmax     = 2.5 cm
+d:Ge/CryoWinIn/Rmin     = 0.0 cm
+d:Ge/CryoWinIn/HL       = 0.05 mm       # 0.1 mm total
+d:Ge/CryoWinIn/TransZ   = -1.005 cm     # just upstream of bath
+
+# --- Variable-temperature cryostat outer wall (visual/attenuation proxy) ---
+# Proposal describes a beamline-ready variable-temperature cryostat. Exact wall
+# drawings are not included in the text, so this is a thin aluminum shell around
+# the bath/holder region while preserving the proposal holder dimensions.
+s:Ge/CryostatOuterWall/Type     = "TsCylinder"
+s:Ge/CryostatOuterWall/Parent   = "World"
+s:Ge/CryostatOuterWall/Material = "G4_Al"
+d:Ge/CryostatOuterWall/Rmax     = 2.8 cm
+d:Ge/CryostatOuterWall/Rmin     = 2.5 cm
+d:Ge/CryostatOuterWall/HL       = 4.275 cm
+d:Ge/CryostatOuterWall/TransZ   = 3.275 cm
+
+# --- Cryogenic Bath (upstream of target) ---
+# Toggle material between LiquidHelium (cold) and LiquidArgon (warm)
+# using Ts/ParameterFile overrides at runtime:
+#   topas DNP_UITF_Irradiation.txt -p Ma/CryoBath/Material=LiquidHelium
+s:Ge/CryoBathUp/Type     = "TsCylinder"
+s:Ge/CryoBathUp/Parent   = "World"
+s:Ge/CryoBathUp/Material = "LiquidHelium"    # change to LiquidArgon for warm
+d:Ge/CryoBathUp/Rmax     = 2.5 cm
+d:Ge/CryoBathUp/Rmin     = 0.0 cm
+d:Ge/CryoBathUp/HL       = 0.475 cm           # ends at -0.05 cm, leaving gap for FluencePlaneIn
+d:Ge/CryoBathUp/TransZ   = -0.525 cm
+
+# --- Sample Holder Wall (rotatable hexagonal PEEK/G10 cage proxy) ---
+# Proposal Fig. 1 shows a rotatable hexagonal cage. Model it explicitly as a
+# six-sided hollow polyhedra with the same 6.5 cm length and 1.42 cm inner radius
+# used in the proposal text.
+s:Ge/SampleHolder/Type     = "G4HPolyhedra"
+s:Ge/SampleHolder/Parent   = "World"
+s:Ge/SampleHolder/Material = "G4_POLYETHYLENE"  # PEEK proxy
+d:Ge/SampleHolder/TransZ   = 3.25 cm    # centered in sample volume
+d:Ge/SampleHolder/PhiStart = 0.0 deg
+d:Ge/SampleHolder/PhiTotal = 360.0 deg
+i:Ge/SampleHolder/NSides   = 6
+dv:Ge/SampleHolder/Z       = 2 -3.25 3.25 cm
+dv:Ge/SampleHolder/RInner  = 2 1.43 1.43 cm
+dv:Ge/SampleHolder/ROuter  = 2 1.48 1.48 cm
+d:Ge/SampleHolder/RotZ     = 30.0 deg
+
+# ==============================================================================
+# TARGET MATERIAL SLAB (primary dosimetry volume)
+# Modeled as a single uniform cylinder inside the hex cage, representing a
+# bulk-average of the 250 mg proposal batch distributed across the holder volume.
+# This keeps the experiment-scale mass faithful to the proposal. The separate
+# single-bead branch below keeps a true 1 mm radius solid bead for microdosimetry.
+# For the advanced bead geometry, see Section 3B below.
+# ==============================================================================
+
+u:Var/ProposalTargetMass_g = 0.250
+u:Var/ProposalHolderVolume_cm3 = 41.2
+u:Var/rho_bulk_proposal = 0.00607
+# Effective bulk density = 0.250 g / (pi * 1.42^2 * 6.5 cm3) = 0.00607 g/cm3.
+# CloneFromMaterial cannot clone custom-defined materials; full definitions are required.
+
+# --- Packed ND3 at 2 K (bead-pack effective density) ---
+s:Ma/PackedND3_2K/DefaultColor          = "blue"
+d:Ma/PackedND3_2K/Density               = 0.00607 g/cm3
+s:Ma/PackedND3_2K/State                 = "Solid"
+d:Ma/PackedND3_2K/MeanExcitationEnergy  = 53.7 eV
+i:Ma/PackedND3_2K/NumberOfComponents    = 2
+sv:Ma/PackedND3_2K/Components           = 2 "Nitrogen" "Deuterium"
+uv:Ma/PackedND3_2K/Fractions            = 2 0.698541 0.301459
+
+# --- Packed NH3 at 87 K (bead-pack effective density) ---
+s:Ma/PackedNH3_87K/DefaultColor         = "green"
+d:Ma/PackedNH3_87K/Density              = 0.00607 g/cm3
+s:Ma/PackedNH3_87K/State                = "Solid"
+d:Ma/PackedNH3_87K/MeanExcitationEnergy = 53.7 eV
+i:Ma/PackedNH3_87K/NumberOfComponents   = 2
+sv:Ma/PackedNH3_87K/Components          = 2 "Nitrogen" "Hydrogen"
+uv:Ma/PackedNH3_87K/Fractions           = 2 0.821906 0.178094
+
+# TargetSlab removed: TargetSlab2D (Section 10) is the single target geometry,
+# providing 14 radial × 65 axial bins for all depth-dose and 2D scoring.
+
+# --- Cryogenic Bath (downstream of target) ---
+s:Ge/CryoBathDn/Type     = "TsCylinder"
+s:Ge/CryoBathDn/Parent   = "World"
+s:Ge/CryoBathDn/Material = "LiquidHelium"
+d:Ge/CryoBathDn/Rmax     = 2.5 cm
+d:Ge/CryoBathDn/Rmin     = 0.0 cm
+d:Ge/CryoBathDn/HL       = 0.475 cm          # starts at 6.55 cm, after FluencePlaneOut gap
+d:Ge/CryoBathDn/TransZ   = 7.025 cm
+
+# --- Cryostat Exit Window (0.1 mm Al) ---
+s:Ge/CryoWinOut/Type     = "TsCylinder"
+s:Ge/CryoWinOut/Parent   = "World"
+s:Ge/CryoWinOut/Material = "G4_Al"
+d:Ge/CryoWinOut/Rmax     = 2.5 cm
+d:Ge/CryoWinOut/Rmin     = 0.0 cm
+d:Ge/CryoWinOut/HL       = 0.05 mm
+d:Ge/CryoWinOut/TransZ   = 7.55 cm
+
+# --- Downstream Beam Dump (water, for shielding estimate) ---
+s:Ge/BeamDump/Type     = "TsBox"
+s:Ge/BeamDump/Parent   = "World"
+s:Ge/BeamDump/Material = "G4_WATER"
+d:Ge/BeamDump/HLX      = 10.0 cm
+d:Ge/BeamDump/HLY      = 10.0 cm
+d:Ge/BeamDump/HLZ      = 5.0 cm
+d:Ge/BeamDump/TransZ   = 13.0 cm
+
+
+# ==============================================================================
+# SECTION 3B — REALISTIC SINGLE BEAD GEOMETRY (Advanced Branch)
+# ==============================================================================
+# A single 1 mm radius ND3 sphere embedded in LHe, scored separately.
+# This geometry captures the micro-dosimetric LET variation across a bead,
+# which governs radical formation and spatial distribution — critical for
+# understanding the DNP polarization build-up pattern.
+
+s:Ge/BeadWorld/Type     = "TsBox"
+s:Ge/BeadWorld/Parent   = "World"
+s:Ge/BeadWorld/Material = "LiquidHelium"
+d:Ge/BeadWorld/HLX      = 1.0 cm
+d:Ge/BeadWorld/HLY      = 1.0 cm
+d:Ge/BeadWorld/HLZ      = 1.0 cm
+d:Ge/BeadWorld/TransX   = 8.0 cm    # offset laterally from main geometry
+
+s:Ge/SingleBead/Type     = "TsSphere"
+s:Ge/SingleBead/Parent   = "BeadWorld"
+s:Ge/SingleBead/Material = "SolidND3_2K"
+d:Ge/SingleBead/Rmax     = 1.0 mm
+d:Ge/SingleBead/Rmin     = 0.0 mm
+# Radial dose bins: 20 shells of 50 um each
+i:Ge/SingleBead/DivisionCount = 20
+s:Ge/SingleBead/DivisionAxis  = "R"
+
+
+# ==============================================================================
+# SECTION 4 — BEAM SOURCE
+# ==============================================================================
+#
+# 8 MeV electron beam from UITF, rastered to ~14 mm radius.
+# The raster pattern is approximated as a uniform disk source
+# (equivalent to a perfectly rastered square beam over a circular aperture).
+# For the cold irradiation phase: reduce current to 1 uA in post-processing;
+# do not change the Monte Carlo history count to represent current.
+# The Gaussian energy spread of UITF (~0.1% FWHM) is included.
+
+s:So/Beam/Type                    = "Beam"
+s:So/Beam/Component               = "World"
+s:So/Beam/BeamParticle            = "e-"
+i:So/Beam/NumberOfHistoriesInRun  = 10000000
+
+# Kinetic energy with realistic energy spread
+d:So/Beam/BeamEnergy                  = 8.0 MeV
+u:So/Beam/BeamEnergySpread            = 0.001      # 0.1% sigma (UITF spec); Gaussian spread is implicit when BeamEnergySpread > 0
+
+# Beam start point: 2 cm upstream of the target face.
+# Use explicit source coordinates, matching the known-working UITF/TOPAS files.
+s:Ge/BeamPosition/Type   = "Group"
+s:Ge/BeamPosition/Parent = "World"
+d:Ge/BeamPosition/TransZ = -2.0 cm   # 2 cm upstream of target face
+d:So/Beam/BeamPositionX  = 0.0 cm
+d:So/Beam/BeamPositionY  = 0.0 cm
+d:So/Beam/BeamPositionZ  = -2.0 cm
+d:So/Beam/RotX           = 0. deg
+
+# Flat circular beam profile (rastered approximation)
+s:So/Beam/BeamPositionDistribution = "Flat"
+s:So/Beam/BeamPositionCutoffShape  = "Ellipse"
+d:So/Beam/BeamPositionCutoffX      = 14.3 mm   # radius from 6.42 cm2 area
+d:So/Beam/BeamPositionCutoffY      = 14.3 mm
+s:So/Beam/BeamAngularDistribution  = "Gaussian"
+d:So/Beam/BeamAngularCutoffX       = 5.0 mrad   # conservative UITF divergence
+d:So/Beam/BeamAngularCutoffY       = 5.0 mrad
+d:So/Beam/BeamAngularSpreadX       = 2.0 mrad
+d:So/Beam/BeamAngularSpreadY       = 2.0 mrad
+
+# Direction: +Z (downstream) — default beam direction; no rotation needed
+
+# --- Back-side irradiation source for proposal front+back dose protocol ---
+# The proposal requires each batch to be irradiated from the front and back
+# because the 8 MeV electron energy deposition falls rapidly through the 6.5 cm
+# target. Keep this source disabled by default; enable it for the mirrored run:
+#   -p So/Beam/NumberOfHistoriesInRun=0 -p So/BackBeam/NumberOfHistoriesInRun=10000000
+s:So/BackBeam/Type                    = "Beam"
+s:So/BackBeam/Component               = "World"
+s:So/BackBeam/BeamParticle            = "e-"
+i:So/BackBeam/NumberOfHistoriesInRun  = 0
+d:So/BackBeam/BeamEnergy              = 8.0 MeV
+u:So/BackBeam/BeamEnergySpread        = 0.001
+d:So/BackBeam/BeamPositionX           = 0.0 cm
+d:So/BackBeam/BeamPositionY           = 0.0 cm
+d:So/BackBeam/BeamPositionZ           = 8.5 cm
+d:So/BackBeam/RotY                    = 180.0 deg
+s:So/BackBeam/BeamPositionDistribution = "Flat"
+s:So/BackBeam/BeamPositionCutoffShape  = "Ellipse"
+d:So/BackBeam/BeamPositionCutoffX      = 14.3 mm
+d:So/BackBeam/BeamPositionCutoffY      = 14.3 mm
+s:So/BackBeam/BeamAngularDistribution  = "Gaussian"
+d:So/BackBeam/BeamAngularCutoffX       = 5.0 mrad
+d:So/BackBeam/BeamAngularCutoffY       = 5.0 mrad
+d:So/BackBeam/BeamAngularSpreadX       = 2.0 mrad
+d:So/BackBeam/BeamAngularSpreadY       = 2.0 mrad
+
+
+# ==============================================================================
+# SECTION 5 — SCORING: DoseToMedium (PRIMARY SCORER)
+# ==============================================================================
+#
+# DoseToMedium uses the stopping power of the ACTUAL traversed medium
+# (unlike DoseToWater which normalizes to water stopping power).
+# This is the correct physical quantity for radical yield estimation,
+# since G-values (radicals per 100 eV) are material-dependent.
+# All doses are in Gy = J/kg.
+
+# --- 5A: Depth-Dose Profile in Target Slab (1 mm bins along Z) ---
+s:Sc/DoseDepth/Quantity                  = "DoseToMedium"
+s:Sc/DoseDepth/Component                 = "TargetSlab2D"
+b:Sc/DoseDepth/OutputToConsole           = "False"
+s:Sc/DoseDepth/OutputFile                = "DoseVsDepth_ND3_2K"
+s:Sc/DoseDepth/OutputType                = "csv"
+s:Sc/DoseDepth/IfOutputFileAlreadyExists = "Overwrite"
+b:Sc/DoseDepth/PropagateToChildren       = "False"
+i:Sc/DoseDepth/XBins                     = 1
+i:Sc/DoseDepth/YBins                     = 1
+i:Sc/DoseDepth/ZBins                     = 65
+# Report in Gy and also convert to e-/cm2 via fluence scorer
+b:Sc/DoseDepth/ReportMean    = "True"
+b:Sc/DoseDepth/ReportVariance = "True"
+b:Sc/DoseDepth/ReportCount   = "True"
+
+# --- 5B: Radial Dose Profile (lateral uniformity check) ---
+# Score DoseToMedium in 1 mm radial rings across the upstream face of target
+# TargetRadial removed: overlapped with target volume.
+# DoseRadial now uses TargetSlab2D (14 R bins already defined); analyse first Z-bin in post-processing.
+
+s:Sc/DoseRadial/Quantity                  = "DoseToMedium"
+s:Sc/DoseRadial/Component                 = "TargetSlab2D"
+b:Sc/DoseRadial/OutputToConsole           = "False"
+s:Sc/DoseRadial/OutputFile                = "DoseVsRadius_ND3"
+s:Sc/DoseRadial/OutputType                = "csv"
+s:Sc/DoseRadial/IfOutputFileAlreadyExists = "Overwrite"
+i:Sc/DoseRadial/XBins                     = 28
+i:Sc/DoseRadial/YBins                     = 1
+i:Sc/DoseRadial/ZBins                     = 1
+b:Sc/DoseRadial/ReportMean                = "True"
+
+# --- 5C: DoseToMedium in Single Bead (radial micro-dose) ---
+s:Sc/DoseBead/Quantity                  = "DoseToMedium"
+s:Sc/DoseBead/Component                 = "SingleBead"
+b:Sc/DoseBead/OutputToConsole           = "False"
+s:Sc/DoseBead/OutputFile                = "DoseVsRadius_SingleBead"
+s:Sc/DoseBead/OutputType                = "csv"
+s:Sc/DoseBead/IfOutputFileAlreadyExists = "Overwrite"
+i:Sc/DoseBead/XBins                     = 20
+i:Sc/DoseBead/YBins                     = 1
+i:Sc/DoseBead/ZBins                     = 1
+b:Sc/DoseBead/ReportMean     = "True"
+b:Sc/DoseBead/ReportVariance = "True"
+
+# --- 5D: DoseToMedium in Al Spreader Window (heat load estimate) ---
+s:Sc/DoseAlSpreader/Quantity                  = "DoseToMedium"
+s:Sc/DoseAlSpreader/Component                 = "AlSpreader"
+b:Sc/DoseAlSpreader/OutputToConsole           = "True"
+s:Sc/DoseAlSpreader/OutputFile                = "DoseInAlWindow"
+s:Sc/DoseAlSpreader/OutputType                = "csv"
+s:Sc/DoseAlSpreader/IfOutputFileAlreadyExists = "Overwrite"
+b:Sc/DoseAlSpreader/ReportMean = "True"
+
+# --- 5E: DoseToMedium in Cryogenic Bath (heat load to LHe dewar) ---
+s:Sc/DoseBath/Quantity                  = "DoseToMedium"
+s:Sc/DoseBath/Component                 = "CryoBathUp"
+b:Sc/DoseBath/OutputToConsole           = "True"
+s:Sc/DoseBath/OutputFile                = "DoseInCryoBath"
+s:Sc/DoseBath/OutputType                = "csv"
+s:Sc/DoseBath/IfOutputFileAlreadyExists = "Overwrite"
+b:Sc/DoseBath/ReportMean = "True"
+
+
+# ==============================================================================
+# SECTION 6 — SCORING: FLUENCE AND ELECTRON SPECTRUM
+# ==============================================================================
+#
+# The proposal specifies dose in e-/cm2 (fluence), not Gy.
+# We score the electron fluence at the TARGET ENTRANCE and EXIT planes
+# to: (a) verify beam transport through windows, (b) compute transmission
+# fraction to validate front/back irradiation protocol, and (c) provide
+# the conversion factor fluence → DoseToMedium for dose planning.
+#
+# Fluence (e-/cm2/primary) × N_primaries × charge_per_primary / area = current
+# At 10 uA for 2.85 hrs: N_e = 10e-6 * 2.85*3600 / 1.602e-19 = 6.42e17 e-
+
+# --- 6A: Electron Fluence at Target Entrance (z=0 plane) ---
+s:Sc/FluenceEntrance/Quantity                  = "Fluence"
+s:Sc/FluenceEntrance/Component                 = "FluencePlaneIn"
+b:Sc/FluenceEntrance/OutputToConsole           = "True"
+s:Sc/FluenceEntrance/OutputFile                = "Fluence_TargetEntrance"
+s:Sc/FluenceEntrance/OutputType                = "csv"
+s:Sc/FluenceEntrance/IfOutputFileAlreadyExists = "Overwrite"
+sv:Sc/FluenceEntrance/OnlyIncludeParticlesNamed = 1 "e-"          # score beam electrons at entrance (secondary e- backscatter to this plane is negligible)
+i:Sc/FluenceEntrance/XBins                     = 1
+i:Sc/FluenceEntrance/YBins                     = 1
+i:Sc/FluenceEntrance/ZBins                     = 1
+b:Sc/FluenceEntrance/ReportMean    = "True"
+b:Sc/FluenceEntrance/ReportVariance = "True"
+
+s:Ge/FluencePlaneIn/Type     = "TsCylinder"
+s:Ge/FluencePlaneIn/Parent   = "World"
+s:Ge/FluencePlaneIn/Material = "Vacuum"
+d:Ge/FluencePlaneIn/Rmax     = 1.42 cm
+d:Ge/FluencePlaneIn/Rmin     = 0.0 cm
+d:Ge/FluencePlaneIn/HL       = 0.05 mm     # finite plane so tracks reliably take a step inside it
+d:Ge/FluencePlaneIn/TransZ   = -0.025 cm   # centered in gap between CryoBathUp end and target face
+
+# --- 6B: Electron Fluence at Target Exit ---
+s:Sc/FluenceExit/Quantity                  = "Fluence"
+s:Sc/FluenceExit/Component                 = "FluencePlaneOut"
+b:Sc/FluenceExit/OutputToConsole           = "True"
+s:Sc/FluenceExit/OutputFile                = "Fluence_TargetExit"
+s:Sc/FluenceExit/OutputType                = "csv"
+s:Sc/FluenceExit/IfOutputFileAlreadyExists = "Overwrite"
+sv:Sc/FluenceExit/OnlyIncludeParticlesNamed = 1 "e-"
+i:Sc/FluenceExit/XBins                     = 1
+i:Sc/FluenceExit/YBins                     = 1
+i:Sc/FluenceExit/ZBins                     = 1
+b:Sc/FluenceExit/ReportMean    = "True"
+b:Sc/FluenceExit/ReportVariance = "True"
+
+s:Ge/FluencePlaneOut/Type     = "TsCylinder"
+s:Ge/FluencePlaneOut/Parent   = "World"
+s:Ge/FluencePlaneOut/Material = "Vacuum"
+d:Ge/FluencePlaneOut/Rmax     = 1.42 cm
+d:Ge/FluencePlaneOut/Rmin     = 0.0 cm
+d:Ge/FluencePlaneOut/HL       = 0.05 mm
+d:Ge/FluencePlaneOut/TransZ   = 6.525 cm   # centered in gap between target exit and CryoBathDn
+
+# --- 6C: Energy Spectrum of Electrons at Target Entrance ---
+# Reveals energy straggling through Al windows; validates effective beam energy
+s:Sc/EnergySpecIn/Quantity                  = "EnergyFluence"
+s:Sc/EnergySpecIn/Component                 = "FluencePlaneIn"
+b:Sc/EnergySpecIn/OutputToConsole           = "False"
+s:Sc/EnergySpecIn/OutputFile                = "EnergySpectrum_Entrance"
+s:Sc/EnergySpecIn/OutputType                = "csv"
+s:Sc/EnergySpecIn/IfOutputFileAlreadyExists = "Overwrite"
+sv:Sc/EnergySpecIn/OnlyIncludeParticlesNamed = 1 "e-"
+# 160 bins from 0 to 8 MeV → 50 keV/bin resolution
+i:Sc/EnergySpecIn/EBins     = 160
+d:Sc/EnergySpecIn/EBinMin   = 0.0 MeV
+d:Sc/EnergySpecIn/EBinMax   = 8.1 MeV
+b:Sc/EnergySpecIn/ReportMean = "True"
+
+# --- 6D: Bremsstrahlung Photon Spectrum Exiting Cryostat ---
+s:Sc/BremsSpec/Quantity                  = "EnergyFluence"
+s:Sc/BremsSpec/Component                 = "FluencePlaneOut"
+b:Sc/BremsSpec/OutputToConsole           = "False"
+s:Sc/BremsSpec/OutputFile                = "BremsSpectrum_Exit"
+s:Sc/BremsSpec/OutputType                = "csv"
+s:Sc/BremsSpec/IfOutputFileAlreadyExists = "Overwrite"
+sv:Sc/BremsSpec/OnlyIncludeParticlesNamed = 1 "gamma"
+i:Sc/BremsSpec/EBins    = 160
+d:Sc/BremsSpec/EBinMin  = 0.0 MeV
+d:Sc/BremsSpec/EBinMax  = 8.1 MeV
+b:Sc/BremsSpec/ReportMean = "True"
+
+
+# ==============================================================================
+# SECTION 7 — SCORING: LINEAR ENERGY TRANSFER (LET)
+# ==============================================================================
+#
+# The LET spectrum directly governs radical (free radical) yield through
+# the G-value relationship: G(radical) = f(LET).
+# For ND3: Ṅ D2 radicals dominate at low LET; atomic N appears at high LET.
+# Scoring LET allows us to predict the spatial distribution of radical types,
+# which underlies why cold irradiation changes the ND3 polarization — the
+# temperature-dependent diffusion radius of radicals created at low LET
+# differs at 2 K vs. 77 K, affecting DNP transfer efficiency.
+#
+# We score both track-averaged LET (LETt) and dose-averaged LET (LETd).
+# LETd is the physically relevant quantity for biological/radical systems:
+#   LETd = integral(LET^2 * Phi(LET) dLET) / integral(LET * Phi(LET) dLET)
+
+# NOTE: TOPAS 3.9 has no generic LET scorer for electrons. ProtonLET is proton-specific
+# and not valid for this 8 MeV electron beam. LET is reconstructed in post-processing:
+#   LETd (keV/um) = EnergyDeposit_mean / (Fluence_mean * VoxelVolume)
+# where VoxelVolume = pi * Rmax^2 / nR * HL*2 / nZ (per voxel in TargetSlab2D).
+
+# --- 7A: EnergyDeposit depth profile (numerator for LETd reconstruction) ---
+s:Sc/LETd_Depth/Quantity                  = "EnergyDeposit"
+s:Sc/LETd_Depth/Component                 = "TargetSlab2D"
+b:Sc/LETd_Depth/OutputToConsole           = "False"
+s:Sc/LETd_Depth/OutputFile                = "EnergyDeposit_DepthProfile"
+s:Sc/LETd_Depth/OutputType                = "csv"
+s:Sc/LETd_Depth/IfOutputFileAlreadyExists = "Overwrite"
+i:Sc/LETd_Depth/XBins                     = 1
+i:Sc/LETd_Depth/YBins                     = 1
+i:Sc/LETd_Depth/ZBins                     = 65
+b:Sc/LETd_Depth/ReportMean    = "True"
+b:Sc/LETd_Depth/ReportVariance = "True"
+
+# --- 7B: Fluence depth profile (denominator for LETt reconstruction) ---
+# Fluence = sum(step lengths) / volume  [cm^-2 per primary]
+# Track-averaged LET (keV/um) = EnergyDeposit / (Fluence * VoxelVolume)
+s:Sc/LETt_Depth/Quantity                  = "Fluence"
+s:Sc/LETt_Depth/Component                 = "TargetSlab2D"
+b:Sc/LETt_Depth/OutputToConsole           = "False"
+s:Sc/LETt_Depth/OutputFile                = "Fluence_DepthProfile"
+s:Sc/LETt_Depth/OutputType                = "csv"
+s:Sc/LETt_Depth/IfOutputFileAlreadyExists = "Overwrite"
+i:Sc/LETt_Depth/XBins                     = 1
+i:Sc/LETt_Depth/YBins                     = 1
+i:Sc/LETt_Depth/ZBins                     = 65
+b:Sc/LETt_Depth/ReportMean = "True"
+
+
+# ==============================================================================
+# SECTION 8 — SCORING: SECONDARY PARTICLE YIELDS
+# ==============================================================================
+#
+# Count secondary particle populations per primary electron.
+# These bear on: (a) neutron shielding requirements at UITF, (b) photon
+# dose to personnel, and (c) estimating the (γ,n) contribution to
+# additional radical formation from photonuclear reactions in 14N and 2D.
+
+# --- 8A: Neutron Fluence at Cryostat Exit (from Bremsstrahlung+photonuclear) ---
+s:Sc/NeutronFluence/Quantity                  = "Fluence"
+s:Sc/NeutronFluence/Component                 = "FluencePlaneOut"
+b:Sc/NeutronFluence/OutputToConsole           = "True"
+s:Sc/NeutronFluence/OutputFile                = "NeutronFluence_Exit"
+s:Sc/NeutronFluence/OutputType                = "csv"
+s:Sc/NeutronFluence/IfOutputFileAlreadyExists = "Overwrite"
+sv:Sc/NeutronFluence/OnlyIncludeParticlesNamed = 1 "neutron"
+b:Sc/NeutronFluence/ReportMean = "True"
+
+# --- 8B: Photon Fluence at Exit ---
+s:Sc/GammaFluence/Quantity                  = "Fluence"
+s:Sc/GammaFluence/Component                 = "FluencePlaneOut"
+b:Sc/GammaFluence/OutputToConsole           = "True"
+s:Sc/GammaFluence/OutputFile                = "GammaFluence_Exit"
+s:Sc/GammaFluence/OutputType                = "csv"
+s:Sc/GammaFluence/IfOutputFileAlreadyExists = "Overwrite"
+sv:Sc/GammaFluence/OnlyIncludeParticlesNamed = 1 "gamma"
+b:Sc/GammaFluence/ReportMean = "True"
+
+# --- 8C: Total Energy Deposition in Target (cross-check with dose) ---
+s:Sc/EDepTotal/Quantity                  = "EnergyDeposit"
+s:Sc/EDepTotal/Component                 = "TargetSlab2D"
+b:Sc/EDepTotal/OutputToConsole           = "True"
+s:Sc/EDepTotal/OutputFile                = "TotalEDep_Target"
+s:Sc/EDepTotal/OutputType                = "csv"
+s:Sc/EDepTotal/IfOutputFileAlreadyExists = "Overwrite"
+b:Sc/EDepTotal/ReportMean    = "True"
+b:Sc/EDepTotal/ReportSum     = "True"
+b:Sc/EDepTotal/ReportVariance = "True"
+
+
+# ==============================================================================
+# SECTION 9 — SCORING: BACKSCATTER ANALYSIS
+# ==============================================================================
+#
+# Front vs. back irradiation is required because the 8 MeV electron range
+# in solid ND3 is ~3–4 cm (CSDA), so the 6.5 cm long target cannot be
+# uniformly irradiated from one side. We score the backscatter current at
+# the entrance face to quantify the fraction of primaries lost to backscatter
+# before reaching the bulk target — an input to the dose calculation in
+# Eq. 1 of the proposal (normalized to 6.42 cm2 interaction area).
+
+s:Sc/Backscatter/Quantity                  = "SurfaceCurrent"
+s:Sc/Backscatter/Component                 = "FluencePlaneIn"
+s:Sc/Backscatter/Surface                   = "FluencePlaneIn/ZMinusSurface"  # upstream face of scoring plane
+b:Sc/Backscatter/OutputToConsole           = "True"
+s:Sc/Backscatter/OutputFile                = "BackscatterCurrent"
+s:Sc/Backscatter/OutputType                = "csv"
+s:Sc/Backscatter/IfOutputFileAlreadyExists = "Overwrite"
+s:Sc/Backscatter/Direction                 = "Out"         # particles exiting upstream (backscattered)
+b:Sc/Backscatter/ReportMean    = "True"
+b:Sc/Backscatter/ReportCount   = "True"
+
+
+# ==============================================================================
+# SECTION 10 — SCORING: DOSE-VOLUME HISTOGRAM APPROXIMATION
+# ==============================================================================
+#
+# A 2D dose map (R vs Z) is scored to generate a DVH-equivalent for the
+# full target volume, enabling identification of hot/cold spots in the
+# heterogeneous bead-pack geometry.
+
+s:Sc/DoseMap2D/Quantity                  = "DoseToMedium"
+s:Sc/DoseMap2D/Component                 = "TargetSlab2D"
+b:Sc/DoseMap2D/OutputToConsole           = "False"
+s:Sc/DoseMap2D/OutputFile                = "DoseMap_RZ_ND3"
+s:Sc/DoseMap2D/OutputType                = "csv"
+s:Sc/DoseMap2D/IfOutputFileAlreadyExists = "Overwrite"
+i:Sc/DoseMap2D/XBins                     = 14
+i:Sc/DoseMap2D/YBins                     = 1
+i:Sc/DoseMap2D/ZBins                     = 65
+b:Sc/DoseMap2D/ReportMean    = "True"
+b:Sc/DoseMap2D/ReportVariance = "True"
+
+# 2D geometry: 14 radial × 65 axial bins
+s:Ge/TargetSlab2D/Type      = "TsCylinder"
+s:Ge/TargetSlab2D/Parent    = "World"
+s:Ge/TargetSlab2D/Material  = "PackedND3_2K"
+d:Ge/TargetSlab2D/Rmax      = 1.42 cm
+d:Ge/TargetSlab2D/Rmin      = 0.0 cm
+d:Ge/TargetSlab2D/HL        = 3.25 cm
+d:Ge/TargetSlab2D/TransZ    = 3.25 cm
+i:Ge/TargetSlab2D/DivisionCountR = 14    # ~1 mm radial bins
+i:Ge/TargetSlab2D/DivisionCountZ = 65    # 1 mm depth bins
+# This gives a 14×65 = 910-bin 2D dose map
+
+
+# ==============================================================================
+# SECTION 11 — SCORING: DOSE RATE AND HEAT LOAD CONVERSION
+# ==============================================================================
+#
+# Converts Monte Carlo DoseToMedium (Gy per primary) to absolute dose rate
+# (Gy/s) using the actual beam current (I) and electron charge (e):
+#   dose_rate (Gy/s) = DoseToMedium_per_primary (Gy) * I (A) / e (C)
+#   heat_load (W)    = DoseToMedium_per_primary (Gy/kg) * mass (kg) * I/e
+#
+# For warm irradiation:
+#   I = 10 uA → N_e/s = 6.242e13 e-/s
+#   mass = 0.25 g (250 mg) = 2.5e-4 kg
+#
+# For cold irradiation:
+#   I = 1 uA → N_e/s = 6.242e12 e-/s
+#   Heat load constraint: LHe refrigerator capacity ~ 0.1–0.5 W
+#   Must verify deposited power < refrigerator capacity at 2 K
+#
+# These conversion factors are written as TOPAS parameters for clarity:
+
+u:Sc/Conversion/WarmCurrentA          = 10.0e-6           # beam current in Amperes (10 uA)
+u:Sc/Conversion/ColdCurrentA          = 1.0e-6            # beam current in Amperes (1 uA)
+u:Sc/Conversion/ElectronChargeC       = 1.602e-19         # electron charge in Coulombs
+u:Sc/Conversion/WarmElectronsPerSec   = 6.242e13          # electrons/s = 10 uA / e
+u:Sc/Conversion/ColdElectronsPerSec   = 6.242e12          # electrons/s = 1 uA / e
+d:Sc/Conversion/TargetMass            = 0.25 g            # 250 mg target mass
+
+# NOTE TO USER: After simulation, compute:
+#   AbsoluteDoseRate = Sc/DoseDepth/Mean[i] * Sc/Conversion/WarmElectronsPerSec
+#   HeatLoadW        = AbsoluteDoseRate * Sc/Conversion/TargetMass
+# Compare HeatLoadW against cryostat refrigerator capacity to confirm feasibility.
+
+
+# ==============================================================================
+# SECTION 12 — ADVANCED: PARAMETRIC DOSE SWEEP
+# ==============================================================================
+#
+# Sweep the cold irradiation current from 0.1 to 10 uA (simulated as a
+# scale factor on histories) and the beam-spreader Al thickness from 0 to
+# 1 mm to produce a 2D optimization surface: dose uniformity vs. heat load.
+# Run this section by varying the following two parameters externally:
+#   topas DNP_UITF_Irradiation.txt \
+#     -p Ge/AlSpreader/HL_param=0.25mm \
+#     -p So/Beam/BeamEnergy=8.0MeV
+
+# Parametric variable: Al spreader half-thickness (varied externally)
+# d:Ge/AlSpreader/HL_param = 0.25 mm    # (defined in Section 3, repeated here for clarity)
+
+# Parametric variable: cold irradiation temperature label (metadata only)
+# Temperature = 2 K  (2, 4, 6, 8, 77 K in sweep — not a TOPAS parameter, record in log)
+
+# The following parameters define the equivalent fluence per simulation run:
+# Run the simulation N times with N_histories scaled to match each dose point:
+#   Warm: 1e17 e-/cm2 over 6.42 cm2 = 6.42e17 total electrons
+#   Cold: 5e15 e-/cm2 over 6.42 cm2 = 3.21e16 total electrons
+# These are normalized in post-processing; Monte Carlo output is per primary.
+
+
+# ==============================================================================
+# SECTION 13 — GRAPHICS AND VISUALIZATION
+# ==============================================================================
+
+b:Gr/Enable                          = "False"    # set True for interactive
+b:Gr/View/IncludeStepPoints          = "False"
+b:Gr/View/ShowOnlyOutlines           = "True"
+s:Gr/View/ColorBy                    = "MaterialType"
+b:Gr/View/IncludeAxes                = "True"
+d:Gr/View/AxesSize                   = 5.0 cm
+
+
+# ==============================================================================
+# SECTION 14 — OUTPUT FORMAT
+# ==============================================================================
+
+# NOTE: Do NOT use s:Sc/FileType or s:Sc/Meta/* here.
+# In TOPAS 3.9, every Sc/<name>/<property> triple is treated as a scorer definition.
+# Spurious names like "Meta" or "FileType" without a Quantity/Component cause
+# TsScoringManager to mis-initialize and can zero ALL scorer output.
+# Output type is controlled per-scorer via s:Sc/<name>/OutputType = "csv" (default).
+#
+# Simulation metadata (for reference — not loaded by TOPAS):
+#   BeamEnergy         = 8.0 MeV
+#   TargetMaterial     = PackedND3_2K
+#   CryoBathMaterial   = LiquidHelium
+#   IrradiationType    = Cold
+#   AlSpreaderThickMM  = 0.5
+#   BeamRadiusMM       = 14.3
+
+
+# ==============================================================================
+# END OF MAIN SIMULATION FILE
+# ==============================================================================
+#
+# POST-PROCESSING INSTRUCTIONS (Python):
+# --------------------------------------
+# After running:
+#   topas DNP_UITF_Irradiation.txt
+#
+# Execute the companion analysis script:
+#   python3 analyze_DNP_UITF.py
+#
+# This script will:
+#   1. Load DoseVsDepth_ND3_2K.csv → plot Bragg-like dose falloff
+#   2. Compute CSDA range estimate and compare to Geant4 continuous-slowing
+#   3. Load Fluence_TargetEntrance.csv → compute absolute fluence in e-/cm2
+#      for both warm and cold irradiation scenarios
+#   4. Load LETd_DepthProfile.csv → overlay LET with dose profile
+#   5. Load DoseMap_RZ_ND3.csv → generate 2D heatmap and DVH
+#   6. Load EnergySpectrum_Entrance.csv → show beam degradation through Al
+#   7. Compute heat load and compare to cryostat capacity
+#   8. Output summary table: optimal Al thickness vs. dose uniformity ratio
+#
+# ==============================================================================

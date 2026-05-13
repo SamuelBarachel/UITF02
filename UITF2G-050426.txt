@@ -1,0 +1,98 @@
+# ==============================================================================
+# UITF2 Geometry Viewer for TOPAS/OpenGL
+# ==============================================================================
+#
+# Purpose:
+#   This file loads the same geometry, materials, source placement, and scorer
+#   definitions as UITF2-050426.txt, but is intended for visual inspection rather
+#   than production scoring. It enables TOPAS OpenGL graphics and redirects any
+#   incidental scorer output to a separate geometry-view directory.
+#
+# Usage:
+#   /Applications/topas/bin/topas UITF2G-050426.txt
+#
+# Notes:
+#   - TOPAS/OpenGL opens a GUI window, so run this from a normal terminal session
+#     on the Mac desktop.
+#   - The main simulation file remains UITF2-050426.txt.
+#   - This wrapper uses one history only. Trajectory drawing is off by default
+#     because macOS Qt/OpenGL builds can crash on exit when track storage is on.
+# ==============================================================================
+
+includeFile = UITF2-050426.txt
+
+# Keep geometry-view output separate from real simulation output.
+s:Ts/OutputDirectory = "./UITF_Geometry_Output"
+
+# Keep the viewer quick and quiet.
+i:Ts/NumberOfThreads = 1
+i:Ts/NumberOfHistoriesInRun = 1
+i:So/Beam/NumberOfHistoriesInRun = 1
+i:So/BackBeam/NumberOfHistoriesInRun = 1
+i:Ts/TrackingVerbosity = 0
+i:Ts/ShowHistoryCountAtInterval = 1
+b:Ts/PauseBeforeInit = "False"
+b:Ts/PauseBeforeSequence = "False"
+b:Ts/PauseBeforeQuit = "True"
+b:Ge/CheckForUnusedComponents = "False"
+
+# Component drawing overrides: make every important object inside World visible
+# and visually distinct. The simulation file keeps physics/material definitions;
+# this viewer file controls presentation.
+b:Ge/World/Invisible = "False"
+s:Ge/World/Color = "grey"
+s:Ge/World/DrawingStyle = "Wireframe"
+
+s:Ge/Beampipe/Color = "grey"
+s:Ge/Beampipe/DrawingStyle = "FullWireFrame"
+s:Ge/AlSpreader/Color = "orange"
+s:Ge/AlSpreader/DrawingStyle = "FullWireFrame"
+s:Ge/CryoWinIn/Color = "yellow"
+s:Ge/CryoWinIn/DrawingStyle = "FullWireFrame"
+s:Ge/CryoWinOut/Color = "yellow"
+s:Ge/CryoWinOut/DrawingStyle = "FullWireFrame"
+s:Ge/CryostatOuterWall/Color = "silver"
+s:Ge/CryostatOuterWall/DrawingStyle = "FullWireFrame"
+
+s:Ge/CryoBathUp/Color = "skyblue"
+s:Ge/CryoBathUp/DrawingStyle = "FullWireFrame"
+s:Ge/CryoBathDn/Color = "lightblue"
+s:Ge/CryoBathDn/DrawingStyle = "FullWireFrame"
+s:Ge/SampleHolder/Color = "magenta"
+s:Ge/SampleHolder/DrawingStyle = "FullWireFrame"
+s:Ge/TargetSlab2D/Color = "blue"
+s:Ge/TargetSlab2D/DrawingStyle = "Wireframe"
+
+s:Ge/FluencePlaneIn/Color = "green"
+s:Ge/FluencePlaneIn/DrawingStyle = "Wireframe"
+s:Ge/FluencePlaneOut/Color = "green"
+s:Ge/FluencePlaneOut/DrawingStyle = "Wireframe"
+s:Ge/BeamDump/Color = "grey"
+s:Ge/BeamDump/DrawingStyle = "Wireframe"
+s:Ge/BeadWorld/Color = "violet"
+s:Ge/BeadWorld/DrawingStyle = "FullWireFrame"
+s:Ge/SingleBead/Color = "purple"
+s:Ge/SingleBead/DrawingStyle = "Solid"
+
+# OpenGL geometry visualization.
+b:Gr/Enable = "True"
+s:Gr/ViewA/Type = "OpenGL"
+i:Gr/ViewA/WindowSizeX = 1100
+i:Gr/ViewA/WindowSizeY = 900
+b:Gr/ViewA/IncludeGeometry = "True"
+b:Gr/ViewA/IncludeTrajectories = "False"
+b:Gr/ViewA/IncludeStepPoints = "False"
+b:Gr/ViewA/IncludeAxes = "False"
+s:Gr/ViewA/AxesComponent = "World"
+d:Gr/ViewA/AxesSize = 1.0 cm
+b:Gr/ViewA/HiddenLineRemovalForGeometry = "False"
+b:Gr/ViewA/HiddenLineRemovalForTrajectories = "False"
+s:Gr/ViewA/ColorBy = "ParticleType"
+sv:Gr/ViewA/ColorByParticleTypeNames = 2 "e-" "gamma"
+sv:Gr/ViewA/ColorByParticleTypeColors = 2 "red" "green"
+
+# Optional camera hints. If a TOPAS build ignores these, the OpenGL window still
+# opens and can be rotated/zoomed interactively.
+d:Gr/ViewA/Theta = 55. deg
+d:Gr/ViewA/Phi = 35. deg
+u:Gr/ViewA/Zoom = 1.4

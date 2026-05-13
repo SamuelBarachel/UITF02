@@ -1,0 +1,164 @@
+UITF2 V2 TOPAS Results: Thesis-Level Interpretation and Validation Guide
+========================================================================
+
+Purpose
+-------
+UITF2-050426.txt models 8 MeV electron irradiation of a cryogenic packed
+ND3 target at UITF for DNP target-material preparation. The v2 production
+protocol is explicitly two-sided: one TOPAS run irradiates the upstream/front
+face and a second TOPAS run irradiates the downstream/back face. Each side is
+now simulated with 10,000,000 primary electron histories.
+
+The scientific objective is not only to draw dose plots. The objective is to
+establish whether the proposed irradiation protocol is physically credible for
+creating a useful radical population while staying within beamline, geometry,
+fluence, and cryogenic heat-load constraints.
+
+Core Research Context
+---------------------
+Dynamic nuclear polarization requires radiation-induced paramagnetic centers
+in materials such as ND3 and NH3. For an irradiation simulation to support a
+publishable argument, it must show:
+
+- where dose is deposited in the target volume;
+- whether the dose field becomes acceptable only after front/back exposure;
+- whether the proposed fluence and current scaling are normalized correctly;
+- whether secondary photons and electron transmission are consistent with the
+  8 MeV beam and target/cryostat stack;
+- whether heat deposited in the cold target and bath is credible for 2-4 K
+  operation;
+- whether derived radical-yield proxies are presented as model-dependent
+  interpretations rather than direct scorer observables.
+
+V2 Production Configuration
+---------------------------
+- Beam energy: 8 MeV electrons.
+- Beam raster: uniform circular disk with 14.3 mm radius, matching about
+  6.42 cm2 beam/sample interaction area.
+- Target: packed ND3 at 2 K, represented with proposal-scale 250 mg material
+  distributed over the 6.5 cm holder volume.
+- Irradiation geometry: front run plus back run, not simultaneous.
+- Front production card: UITF2-10M-front.txt.
+- Back production card: UITF2-10M-back.txt.
+- Histories per side: 10,000,000.
+- Front output folder: UITF_DNP_Output_10M_front.
+- Back output folder: UITF_DNP_Output_10M_back.
+- Legacy wrapper names UITF2-100M-front.txt and UITF2-100M-back.txt have been
+  retained, but they now execute the v2 10M-per-side protocol.
+
+Simulation Process
+------------------
+1. TOPAS builds the beamline, aluminum spreader, cryostat windows, LHe bath,
+   target holder, packed ND3 volume, scoring planes, and downstream dump.
+2. The front source launches 8 MeV electrons from upstream into +Z.
+3. The back source launches the same nominal beam from downstream into -Z.
+4. Each side is run separately with 10M primary histories.
+5. TOPAS writes scorer CSV files for dose, energy deposition, fluence,
+   spectra, secondary photons, and heat-load cross-checks.
+6. Post-processing normalizes summed scorer values by 10M histories, then
+   scales to physical fluence/current using the proposal beam conditions.
+7. The thesis-level result is the superposition of the front dose field and
+   the target-coordinate-oriented back dose field.
+
+Qualitative Validity Checks
+---------------------------
+A run is qualitatively credible only if the plots tell a physically coherent
+story:
+
+- The single-side depth-dose profile should be range-limited across the 6.5 cm
+  target. A perfectly flat one-sided depth profile would be suspicious.
+- The back run should complement the front run after orientation into common
+  target coordinates.
+- The combined front+back curve should reduce the one-sided depth bias and
+  should be clearly identified as cumulative dose from two sequential
+  irradiations.
+- The 2D R-Z dose map should show raster coverage across the target radius,
+  not a narrow pencil-beam artifact.
+- Entrance spectra should remain centered near the nominal 8 MeV beam energy
+  after upstream material.
+- Exit photon/bremsstrahlung plots should be interpreted as background and
+  shielding indicators, not as the primary radical-production observable.
+- Neutron fluence may be zero or very small at 8 MeV; this is not a failure
+  unless a photonuclear production argument is being made.
+
+Quantitative Validity Checks
+----------------------------
+Before quoting a number in a thesis, proposal update, or paper-style figure,
+check the following:
+
+- Confirm each production folder was generated from 10,000,000 histories.
+- Confirm front and back folders are separate and were not overwritten.
+- Confirm DoseVsDepth_ND3_2K.csv has nonzero numeric rows, normally one row per
+  1 mm depth bin.
+- Confirm scorer quantities are sums over histories before dividing by 10M.
+- Confirm absolute dose conversion uses:
+    electrons_per_second = beam_current_A / 1.602176634e-19 C
+    dose_rate_Gy_per_s = dose_Gy_per_primary * electrons_per_second
+- Confirm warm and cold irradiation times are treated per side:
+    warm: about 2.85 hr per side at 10 uA
+    cold: about 1.42 hr per side at 1 uA
+- Confirm front+back fluence totals are reported as sequential two-side totals,
+  not as simultaneous current doubling.
+- Confirm heat load is quoted per active irradiation side. Do not sum front and
+  back heat loads unless discussing cumulative energy, because the target is
+  irradiated from only one side at a time.
+- Confirm target mass, bulk density, beam area, and target length are stated
+  next to any absolute dose or heat-load number.
+- Compare heat-load estimates from dose-to-mass scaling against the
+  TotalEDep_Target.csv scorer; disagreement should be explained before any
+  publication-level claim.
+
+Interpretation of Main Outputs
+------------------------------
+- DoseVsDepth_ND3_2K.csv is the central depth-dose result.
+- DoseMap_RZ_ND3.csv is the spatial proof that the rastered beam covers the
+  target radius and that front/back superposition is geometrically sensible.
+- EnergyDeposit_DepthProfile.csv and Fluence_DepthProfile.csv support
+  LET-like derived diagnostics. These are post-processing constructs for
+  electrons, not direct TOPAS LET scorer outputs.
+- Fluence_TargetEntrance.csv and Fluence_TargetExit.csv validate beam
+  transport and target transmission.
+- EnergySpectrum_Entrance.csv validates the beam energy seen by the target.
+- BremsSpectrum_Exit.csv and GammaFluence_Exit.csv contextualize photon
+  backgrounds.
+- TotalEDep_Target.csv is the preferred energy-deposition cross-check for heat
+  load.
+
+Recommended Workflow
+--------------------
+1. Geometry/debug check:
+   /Applications/topas/bin/topas UITF2-20k-debug.txt
+
+2. V2 production front side:
+   /Applications/topas/bin/topas UITF2-10M-front.txt
+
+3. V2 production back side:
+   /Applications/topas/bin/topas UITF2-10M-back.txt
+
+4. Or run both sides in sequence:
+   ./run_UITF2.command
+
+5. Python single-run analysis:
+   python3 analyze_DNP_UITF2.py --output_dir UITF_DNP_Output_10M_front
+   python3 analyze_DNP_UITF2.py --output_dir UITF_DNP_Output_10M_back
+
+6. MATLAB front/back thesis figures:
+   analyze_DNP_UITF2_MATLAB
+
+7. Confirm the MATLAB console summary reports front/back superposition and
+   writes figures to figures_matlab/pptx_deck_assets.
+
+Publication-Level Framing
+-------------------------
+The strongest v2 claim is:
+
+    The UITF two-sided 8 MeV electron irradiation protocol can be represented
+    in TOPAS as two sequential 10M-history simulations whose target-coordinate
+    superposition gives the proposal-relevant cumulative dose field.
+
+The most important caveat is:
+
+    Radical production and polarization performance are inferred through
+    dose, fluence, and LET-like proxies; they remain model-dependent until
+    benchmarked against measured ESR, dose, temperature, or polarization data.
+

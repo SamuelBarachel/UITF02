@@ -1,0 +1,7 @@
+# TOPAS Version: 3.9
+# Parameter File: UITF2-10M-back.txt
+# Results for scorer: GammaFluence
+# Filtered by: OnlyIncludeParticlesNamed = 1 "gamma"
+# Scored in component: FluencePlaneOut
+# Fluence ( /mm2 ) : Sum   
+256.7569274902344

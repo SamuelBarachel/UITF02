@@ -1,0 +1,7 @@
+Task mode: create
+Primary deck profile: engineering-platform
+Secondary gates: scientific proposal narrative, simulation evidence, presentation-ready chart curation
+Required proof objects: proposal-matched setup, front/back dose superposition, 2D dose map, electron fluence, material electron density, raster coverage, spectra, heat load
+Source assets: local TOPAS MATLAB outputs in figures_matlab/pptx_deck_assets and proposal text in UNH-UITF BeamNetUS Proposal.docx
+Exclusions: single-bead microdosimetry plots are excluded because the proposal mentions target spheres but not single-bead dose as an observable.
+Known missing inputs: no measured DNP polarization data yet; this deck presents Monte Carlo feasibility and geometry/dose agreement, not experimental polarization results.

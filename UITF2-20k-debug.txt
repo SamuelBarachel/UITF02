@@ -1,0 +1,10 @@
+# Quick diagnostic wrapper for UITF2.
+# Use this for geometry/scorer checks without launching the full 10M-per-side run.
+
+includeFile = UITF2-050426.txt
+
+i:Ts/NumberOfHistoriesInRun = 20000
+i:So/Beam/NumberOfHistoriesInRun = 20000
+i:So/BackBeam/NumberOfHistoriesInRun = 0
+i:Ts/ShowHistoryCountAtInterval = 1000
+s:Ts/OutputDirectory = "./UITF_DNP_Output_debug20k"
