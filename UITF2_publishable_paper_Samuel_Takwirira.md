@@ -161,13 +161,13 @@ The estimated cold heat load is \(0.064\,\mathrm{W}\) per active irradiation sid
 
 **Figure 7.** Target heat load versus beam current. Deposited power is derived from total target energy deposition per primary and scaled by electron rate. This figure is used to assess compatibility with cold irradiation.
 
-### 4.8 Python Analysis Output
+### 4.8 Supplemental Diagnostic Panel
 
-The Python post-processing output provides an independent multi-panel analysis product from the same scorer family [1,2]. It includes dose-depth behavior, LET-like proxy behavior, radical-yield proxy visualization, diffusion-radius context, dose-map information, lateral uniformity, energy spectra, bead-dose information, and current-dependent heat-load scaling. This figure is retained as a supplemental analysis panel because it documents the broader diagnostic workflow beyond the individually exported MATLAB publication panels.
+The supplemental multi-panel diagnostic provides an independent analysis product from the same scorer family [1,2]. It includes dose-depth behavior, LET-like proxy behavior, radical-yield proxy visualization, diffusion-radius context, dose-map information, lateral uniformity, energy spectra, bead-dose information, and current-dependent heat-load scaling. This figure is retained as a compact record of the broader diagnostic workflow supporting the publication figures.
 
-![Figure 8. Python-generated multi-panel cold ND3 analysis output.](./figures/DNP_UITF_Analysis_ND3_cold.png)
+![Figure 8. Supplemental multi-panel cold ND3 diagnostic summary.](./figures/DNP_UITF_Analysis_ND3_cold.png)
 
-**Figure 8.** Python-generated multi-panel cold ND3 analysis output. The panel is useful as a compact diagnostic summary of the full post-processing workflow, including direct Monte Carlo quantities and derived polarized-target interpretation proxies.
+**Figure 8.** Supplemental multi-panel cold ND3 diagnostic summary. The panel is useful as a compact summary of the full post-processing workflow, including direct Monte Carlo quantities and derived polarized-target interpretation proxies.
 
 ### 4.9 Quantitative Summary
 
@@ -229,8 +229,8 @@ Figure-source mapping:
 | Figure 7 | `UITF02/figures_matlab/pptx_deck_assets/08_heat_load_vs_current.png` |
 | Figure 8 | `UITF02/figures/DNP_UITF_Analysis_ND3_cold.png` |
 
-The quantitative summary table used for Table 1 is stored with the MATLAB
-analysis outputs in `UITF02/figures_matlab/`.
+The quantitative summary table used for Table 1 is stored with the analysis
+outputs in `UITF02/figures_matlab/`.
 
 ## References
 
