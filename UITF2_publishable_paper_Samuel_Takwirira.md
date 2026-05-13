@@ -188,16 +188,15 @@ The calculation also separates irradiation quality from material-response interp
 
 The cold heat-load result is promising as a feasibility indicator. A deposited power of \(0.064\,\mathrm{W}\) per active side is within the scale where low-temperature operation may be plausible, subject to the actual refrigerator, thermal coupling, target holder, and beam structure. The warm heat load is larger but belongs to a different thermal environment and should be interpreted separately.
 
-## 6. Limitations and Required Benchmarks
+## 6. Model Scope and Experimental Benchmarks
 
-The following limitations define what is still required for a fully publishable experimental claim:
+The present calculation is best interpreted as a feasibility and beam-transport study for the proposed irradiation geometry. It establishes the dose, fluence, target-volume coverage, spectral diagnostics, and heat-load scale needed to evaluate the irradiation protocol, while leaving the final material-response observables to dedicated experimental benchmarks.
 
-1. The packed ND3 material is modeled as a bulk-average mass distribution. A resolved bead-packing model would be needed to study bead-to-bead dose variations.
-2. The cryostat and holder geometry are physics proxies. Final engineering dimensions should replace proxy dimensions when available.
-3. LET-like quantities are derived from post-processing and should not be overinterpreted as direct electron chemical effectiveness.
-4. Radical yield, radical type, and radical survival are not directly simulated.
-5. Final DNP polarization requires benchmark measurements, ideally including ESR radical characterization and NMR polarization performance.
-6. The final manuscript table should be regenerated from the exact archived production runs used for submission.
+The packed ND3 target is represented as a batch-averaged mass distribution over the holder volume. This treatment is appropriate for proposal-scale fluence and heat-load normalization, and it preserves the relevant target mass for the reported dose estimates. A resolved bead-packing model would be a useful extension if bead-to-bead dose variation becomes a design driver. Similarly, the cryostat and holder are represented by physics-motivated proxy dimensions and should be updated as engineering drawings mature; this refinement would improve geometry fidelity without changing the central range-based conclusion that one-sided \(8\,\mathrm{MeV}\) exposure is insufficient over the full target length.
+
+The LET-like and radical-yield proxy panels are used as diagnostic context for where ionization energy is deposited. They are not treated as direct predictions of radical species, radical survival, or electron chemical effectiveness. The simulation therefore motivates, rather than replaces, the experimental benchmarks most relevant to DNP material quality: ESR characterization of the irradiated radical population and NMR or polarization measurements after the proposed irradiation and thermal history.
+
+For reproducibility, the tabulated values should remain tied to the archived production outputs and analysis-script version used for the final manuscript, so that each reported number can be traced to a single analysis provenance chain.
 
 ## 7. Conclusions
 
