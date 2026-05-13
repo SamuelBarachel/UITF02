@@ -206,7 +206,7 @@ For the cold \(1\,\mu\mathrm{A}\) case, the model delivers \(4.97 \times 10^{15}
 
 ## Acknowledgements
 
-This manuscript was prepared by Samuel Takwirira for the UNH DNP Group / Jefferson Lab Target Group collaboration. The work is motivated by polarized fixed-target material preparation and by the broader literature on irradiated ammonia targets for DNP [3-6].
+This manuscript was prepared by Samuel Takwirira for the UNH DNP Group / Jefferson Lab Target Group collaboration. Samuel Takwirira gratefully acknowledges Dr. Karl Slifer for steering the work toward its intended directions through critique sessions. The work is motivated by polarized fixed-target material preparation and by the broader literature on irradiated ammonia targets for DNP [3-6].
 
 ## Data and Code Availability
 
