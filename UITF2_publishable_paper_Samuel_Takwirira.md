@@ -210,27 +210,7 @@ This manuscript was prepared by Samuel Takwirira for the UNH DNP Group / Jeffers
 
 ## Data and Code Availability
 
-The simulation cards, analysis scripts, scorer outputs, and figure assets are available in the shared UITF project folder. In the path table below, `UITF02/` denotes the top-level project directory. The embedded figure links in the manuscript are written relative to the manuscript location so that they render when the paper is opened from inside the project folder.
-
-Figure assets are stored under:
-
-`UITF02/figures_matlab/pptx_deck_assets/`
-
-Figure-source mapping:
-
-| Manuscript figure | Source file |
-|---|---|
-| Figure 1 | `UITF02/figures_matlab/pptx_deck_assets/01_front_back_superimposed_cold_dose.png` |
-| Figure 2 | `UITF02/figures_matlab/pptx_deck_assets/02_combined_cold_dose_depth.png` |
-| Figure 3 | `UITF02/figures_matlab/pptx_deck_assets/03_2d_dose_map_superimposed.png` |
-| Figure 4 | `UITF02/figures_matlab/pptx_deck_assets/04_electron_fluence_depth_unnormalized.png` |
-| Figure 5 | `UITF02/figures_matlab/pptx_deck_assets/06_lateral_dose_uniformity_raw.png` |
-| Figure 6 | `UITF02/figures_matlab/pptx_deck_assets/07_energy_spectra.png` |
-| Figure 7 | `UITF02/figures_matlab/pptx_deck_assets/08_heat_load_vs_current.png` |
-| Figure 8 | `UITF02/figures/DNP_UITF_Analysis_ND3_cold.png` |
-
-The quantitative summary table used for Table 1 is stored with the analysis
-outputs in `UITF02/figures_matlab/`.
+The TOPAS simulation inputs, analysis scripts, scorer outputs, and figure-generation materials used in this work are archived in the project repository: https://github.com/SamuelBarachel/UITF02. The numerical values reported in the tables and figures were generated from the archived production outputs associated with this manuscript. Additional project materials may be made available by the author upon reasonable request, subject to collaboration and institutional constraints.
 
 ## References
 
