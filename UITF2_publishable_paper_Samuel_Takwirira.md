@@ -1,36 +1,24 @@
-```{=latex}
-\begin{titlepage}
-\centering
-\vspace*{0.85in}
-{\Large\bfseries UNIVERSITY OF NEW HAMPSHIRE\par}
-\vspace{0.35in}
-\rule{0.58\textwidth}{0.4pt}\par
-\vspace{0.85in}
-{\LARGE\bfseries Monte Carlo Assessment of Two-Sided $8\,\mathrm{MeV}$ Electron Irradiation of Cryogenic ND$_3$ for Polarized Target Preparation\par}
-\vspace{0.55in}
-{\large Journal Manuscript\par}
-\vspace{0.55in}
-{\large Samuel Takwirira\par}
-\vspace{0.25in}
-{UNH DNP Group\par}
-{University of New Hampshire\par}
-{Jefferson Lab Target Group Collaboration\par}
-\vfill
-{May 2026\par}
-\end{titlepage}
-```
+<div align="center">
 
-```{=html}
-<section class="title-page">
-  <div class="title-university">University of New Hampshire</div>
-  <div class="title-rule"></div>
-  <h1>Monte Carlo Assessment of Two-Sided 8 MeV Electron Irradiation of Cryogenic ND<sub>3</sub> for Polarized Target Preparation</h1>
-  <p class="title-type">Journal Manuscript</p>
-  <p class="title-author">Samuel Takwirira</p>
-  <p class="title-affiliation">UNH DNP Group<br>University of New Hampshire<br>Jefferson Lab Target Group Collaboration</p>
-  <p class="title-date">May 2026</p>
-</section>
-```
+# UNIVERSITY OF NEW HAMPSHIRE
+
+---
+
+# Monte Carlo Assessment of Two-Sided 8 MeV Electron Irradiation of Cryogenic ND<sub>3</sub> for Polarized Target Preparation
+
+**Journal Manuscript**
+
+**Samuel Takwirira**
+
+UNH DNP Group  
+University of New Hampshire  
+Jefferson Lab Target Group Collaboration
+
+May 2026
+
+</div>
+
+<div style="page-break-after: always;"></div>
 
 # Abstract
 
