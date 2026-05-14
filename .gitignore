@@ -2,6 +2,20 @@
 __pycache__/
 *.py[cod]
 
+# Local reference documents and generated report exports.
+From Prof Karl .pdf
+UNH-UITF BeamNetUS Proposal.docx
+crabb.pdf
+UITF02_Report.pdf
+Project_Report.pdf
+Project_Report.tex
+
+# Local presentation build notes and generated source code.
+outputs/**/claim-spine.txt
+outputs/**/profile-plan.txt
+outputs/**/source-notes.txt
+outputs/**/slides/
+
 # Empty local clones of the same GitHub repository.
 UITF02/
 UITF02-[0-9]*/

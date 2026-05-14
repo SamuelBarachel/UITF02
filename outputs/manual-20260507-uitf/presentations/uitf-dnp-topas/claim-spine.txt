@@ -1,6 +1,0 @@
-1. The simulation recreates the proposal's beam/material protocol closely enough to support feasibility discussion.
-2. Front/back irradiation is essential: one side alone is range-limited; superposition produces the proposal-relevant dose field.
-3. The 2D map and radial dose profile show whether the full target volume receives the intended coverage.
-4. Electron transport and material electron density are now shown without normalization, separating particle fluence from target composition.
-5. Heat load at the proposed cold current remains in the cryogenic feasibility window, while 10 uA warm running is a different thermal regime.
-6. The deck avoids speculative or low-relevance outputs, especially the single-bead microdosimetry plot.

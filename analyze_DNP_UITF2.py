@@ -2,19 +2,20 @@
 """
 analyze_DNP_UITF.py
 ====================
-Post-processing and advanced predictive analysis for the TOPAS Monte Carlo
+Post-processing and diagnostic analysis for the TOPAS Monte Carlo
 simulation of the Jefferson Lab UITF DNP target irradiation experiment.
 
 This script ingests all CSV scorer outputs from the TOPAS simulation and
-produces publication-quality figures plus a quantitative summary table.
+produces report-ready figures plus a quantitative summary table.
 
 PHYSICS BACKGROUND:
     Dynamic Nuclear Polarization (DNP) target material (ND3/NH3) is
     pre-irradiated to create free radicals (NḊ2, NḢ2, atomic N) that
     enable microwave-driven polarization transfer from electrons to nuclei.
     The radical yield G(radical) depends on both the deposited dose (Gy)
-    and the LET of the ionizing radiation — hence scoring both DoseToMedium
-    AND LET is essential for predicting post-irradiation polarization.
+    and the LET of the ionizing radiation. Dose and LET-like diagnostics are
+    useful for interpreting irradiation quality, but they do not by themselves
+    determine final post-irradiation polarization.
 
     Cold irradiation (2–4 K) is hypothesized to produce a different radical
     configuration than warm irradiation (87 K) because:
@@ -22,9 +23,9 @@ PHYSICS BACKGROUND:
       (b) Crystal phase of ND3 differs between 2 K and 87 K
       (c) LET-dependent recombination channels are quenched at low T
 
-    This script quantifies (a) by computing the LET-weighted dose profile,
-    and provides the first quantitative estimate of where in the 6.5 cm
-    target the cold-irradiation radicals are concentrated.
+    This script estimates diffusion-scale context and LET-weighted dose trends
+    to support interpretation of where radiation effects are concentrated in
+    the 6.5 cm target.
 
 OUTPUTS:
     Figure 1:  Dose-Depth profile (Gy/primary vs. mm depth in ND3)
@@ -36,9 +37,9 @@ OUTPUTS:
     Figure 7:  Bremsstrahlung and neutron spectra at exit
     Figure 8:  Single-bead radial dose profile
     Figure 9:  Absolute dose rate and heat load vs. beam current
-    Figure 10: LET-weighted radical yield prediction (Fricke G-value model)
+    Figure 10: LET-weighted radical-yield proxy (Fricke G-value model)
     Table 1:   Summary — key dosimetric quantities for warm and cold runs
-    Table 2:   Predicted polarization scaling from radical yield estimate
+    Table 2:   Polarization proxy scaling from radical yield estimate
 
 USAGE:
     python3 analyze_DNP_UITF.py [--output_dir ./UITF_DNP_Output]
@@ -299,13 +300,13 @@ def g_value_model(let_keV_um, G0, alpha):
 def radical_yield_profile(z_mm, dose_Gy_per_primary, let_keV_um,
                            current_uA, mode="warm"):
     """
-    Predict the spatial profile of radical concentration along target depth.
+    Estimate a proxy spatial profile of radical concentration along target depth.
 
     Radical density [radicals/cm3] = G(LET) × dose_rate [eV/g/s] × density [g/cm3]
                                      / 100 eV   (G defined per 100 eV)
 
-    This is the key quantity connecting the MC simulation to DNP performance:
-    the DNP polarization rate dP/dt ∝ n_radical × ESR_lineshape × microwave_power.
+    This provides a diagnostic bridge between Monte Carlo dose quantities and
+    later DNP material-response measurements.
     """
     current_A    = current_uA * 1.0e-6
     e_per_s      = current_A / E_CHARGE_C
@@ -466,21 +467,20 @@ def plot_let_profile(ax, z_mm, let_d, let_t, dose, current_uA, mode):
 
     ax.set_xlabel("Depth in Target (mm)", fontsize=12)
     ax.set_ylabel("LET (keV/μm)", fontsize=12)
-    ax.set_title("LET vs. Depth — Key for Radical Yield Prediction", fontsize=13)
+    ax.set_title("LET vs. Depth — Radical-Yield Context", fontsize=13)
     ax.legend(loc="upper left", fontsize=10)
     ax_dose.legend(loc="upper right", fontsize=10)
     ax.grid(True, alpha=0.3)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# FIGURE 3: Radical Yield Prediction
+# FIGURE 3: Radical Yield Proxy
 # ─────────────────────────────────────────────────────────────────────────────
 
 def plot_radical_yield(ax, z_mm, dose, let_d, current_uA, mode):
     """
-    Predict radical concentration profile along depth using G-value model.
-    This is the KEY scientific prediction connecting the MC simulation
-    to the expected DNP polarization performance.
+    Estimate a radical-yield proxy along depth using the G-value model.
+    This is diagnostic context for later ESR or polarization benchmarks.
     """
     if let_d is None:
         # Use a physically reasonable LET estimate if MC not available
@@ -497,14 +497,14 @@ def plot_radical_yield(ax, z_mm, dose, let_d, current_uA, mode):
     ax.plot(z_mm, atomN_rate / atomN_rate.max(), lw=2, color="#FF9800",
             ls="--", label="Atomic N radical (normalized)")
 
-    # Ratio — DNP efficiency driven by ND2 dominance
+    # Proxy ratio for the relative ND2 contribution.
     ratio = ND2_rate / (ND2_rate + atomN_rate)
     ax.plot(z_mm, ratio, lw=2, color="#1565C0", ls=":",
             label="Ṅ D₂ fraction (DNP efficiency proxy)")
 
     ax.set_xlabel("Depth in Target (mm)", fontsize=12)
     ax.set_ylabel("Normalized Radical Yield / Fraction", fontsize=12)
-    ax.set_title("Predicted Radical Profile vs. Depth (G-Value Model)", fontsize=13)
+    ax.set_title("Estimated Radical-Yield Proxy vs. Depth (G-Value Model)", fontsize=13)
     ax.legend(fontsize=10)
     ax.grid(True, alpha=0.3)
     ax.set_ylim(0, 1.1)
@@ -517,9 +517,9 @@ def plot_radical_yield(ax, z_mm, dose, let_d, current_uA, mode):
 def plot_diffusion_radius(ax):
     """
     Plot the radical diffusion radius as a function of irradiation temperature.
-    This is the quantitative explanation for WHY cold irradiation matters for ND3.
-    At 2 K: diffusion radius ≪ DNP transfer distance → radicals stay isolated.
-    At 77 K: radicals diffuse, recombine → fewer polarizing centers remain.
+    This gives context for why irradiation temperature matters for ND3.
+    At 2 K, diffusion is strongly suppressed. At 77 K, radical migration and
+    recombination are more relevant.
     """
     T_range = np.array([2, 3, 4, 5, 6, 8, 10, 15, 20, 30, 50, 77, 87])
     r_nm    = diffusion_radius_vs_temperature(T_range)
@@ -543,7 +543,7 @@ def plot_diffusion_radius(ax):
     ax.set_xlabel("Irradiation Temperature (K)", fontsize=12)
     ax.set_ylabel("Radical Diffusion Radius (nm)", fontsize=12)
     ax.set_title("Radical Diffusion Radius vs. Temperature\n"
-                 "(Arrhenius Model — Key to Cold Irradiation Mechanism)", fontsize=12)
+                 "(Arrhenius Model — Cold Irradiation Context)", fontsize=12)
     ax.legend(fontsize=10)
     ax.grid(True, alpha=0.3, which="both")
 
@@ -725,7 +725,7 @@ def generate_summary_table(dose_total, fluence_warm, fluence_cold,
     print(f"  Cumulative dose (both sides): {cum_c:.3e} Gy")
     print(f"  Heat load on target:     {heat_cold:.4f} W")
     print(f"\n{'─'*72}")
-    print(f"  RADICAL YIELD PREDICTIONS (G-value model)")
+    print(f"  RADICAL YIELD PROXIES (G-value model)")
     print(f"{'─'*72}")
     print(f"  G(Ṅ D₂) at LET=1.5 keV/μm:  {g_value_model(1.5, G0_ND2_RAD, ALPHA_ND2):.2f} radicals/100eV")
     print(f"  G(Ṅ D₂) at LET=5.0 keV/μm:  {g_value_model(5.0, G0_ND2_RAD, ALPHA_ND2):.2f} radicals/100eV")

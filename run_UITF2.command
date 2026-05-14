@@ -40,15 +40,15 @@ section "UITF2 v2 TOPAS production: front side, 10M histories"
 section "UITF2 v2 TOPAS production: back side, 10M histories"
 "$TOPAS" UITF2-10M-back.txt
 
-section "Python analysis: front-side 10M output"
+section "Single-run analysis: front-side 10M output"
 python3 analyze_DNP_UITF2.py --output_dir UITF_DNP_Output_10M_front --mode cold --material ND3
 
-section "Python analysis: back-side 10M output"
+section "Single-run analysis: back-side 10M output"
 python3 analyze_DNP_UITF2.py --output_dir UITF_DNP_Output_10M_back --mode cold --material ND3
 
-section "MATLAB analysis: combined front/back thesis figures"
+section "MATLAB analysis: combined front/back report figures"
 if [[ -x "$MATLAB" ]]; then
-  "$MATLAB" -batch "cd('/Users/takwirira/Desktop/TOPAS/UITF02'); analyze_DNP_UITF2_MATLAB"
+  "$MATLAB" -batch "analyze_DNP_UITF2_MATLAB"
 else
   echo "WARNING: MATLAB executable not found at $MATLAB"
   echo "Skipping MATLAB combined front/back figure generation."
@@ -58,7 +58,7 @@ section "UITF2 v2 pipeline complete"
 echo "TOPAS outputs:"
 echo "  UITF_DNP_Output_10M_front"
 echo "  UITF_DNP_Output_10M_back"
-echo "Python figures:"
+echo "Diagnostic figures:"
 echo "  UITF_DNP_Output_10M_front/figures"
 echo "  UITF_DNP_Output_10M_back/figures"
 echo "MATLAB figures:"

@@ -7,8 +7,8 @@
 #   Simulate the 8 MeV electron beam irradiation of solid ammonia (ND3/NH3)
 #   and deuterated butanol targets in a variable-temperature cryostat at the
 #   UITF. Score DoseToMedium throughout target volumes, characterize the
-#   longitudinal dose falloff, determine optimal beam-spreading aluminum window
-#   thickness, and predict the dose uniformity and deposited energy as a
+#   longitudinal dose falloff, determine beam-spreading aluminum window
+#   thickness, and evaluate the dose uniformity and deposited energy as a
 #   function of irradiation depth for both warm (87 K) and cold (2-4 K)
 #   irradiation configurations.
 #
@@ -37,12 +37,12 @@
 #   5. Bremsstrahlung photon spectrum exiting downstream (shielding design)
 #   6. Backscatter fraction (relevant to front vs. back irradiation geometry)
 #
-# ADVANCED PREDICTION FEATURES:
+# DIAGNOSTIC FEATURES:
 #   - Parametric scoring: DoseToMedium scored in 1 mm depth bins (slab) and
-#     in individual 1 mm radius spherical bead geometry (realistic geometry)
+#     in an individual 1 mm radius spherical bead geometry
 #   - Electron fluence spectrum at target entrance and exit faces
 #   - Secondary particle production: photons, neutrons (via Bremsstrahlung)
-#   - Linear energy transfer (LET) spectrum for radical formation modeling
+#   - LET-like reconstruction inputs for radical-formation context
 #   - Range-energy relationship verification at 8 MeV in cryogenic ND3
 #   - Front vs. back irradiation symmetry check
 #   - Dose-volume histogram (DVH) approximation via radial dose binning
@@ -96,7 +96,7 @@ s:Ts/OutputDirectory = "./UITF_DNP_Output"
 
 
 # ==============================================================================
-# SECTION 1 — PHYSICS LIST (PhD-level EM Physics)
+# SECTION 1 — PHYSICS LIST
 # ==============================================================================
 #
 # G4EmStandard_opt4: highest accuracy EM, uses Urban multiple scattering
@@ -311,7 +311,7 @@ d:Ge/SampleHolder/RotZ     = 30.0 deg
 # bulk-average of the 250 mg proposal batch distributed across the holder volume.
 # This keeps the experiment-scale mass faithful to the proposal. The separate
 # single-bead branch below keeps a true 1 mm radius solid bead for microdosimetry.
-# For the advanced bead geometry, see Section 3B below.
+# For bead-scale geometry, see Section 3B below.
 # ==============================================================================
 
 u:Var/ProposalTargetMass_g = 0.250
@@ -370,12 +370,11 @@ d:Ge/BeamDump/TransZ   = 13.0 cm
 
 
 # ==============================================================================
-# SECTION 3B — REALISTIC SINGLE BEAD GEOMETRY (Advanced Branch)
+# SECTION 3B — SINGLE BEAD GEOMETRY (Microdosimetry Branch)
 # ==============================================================================
 # A single 1 mm radius ND3 sphere embedded in LHe, scored separately.
-# This geometry captures the micro-dosimetric LET variation across a bead,
-# which governs radical formation and spatial distribution — critical for
-# understanding the DNP polarization build-up pattern.
+# This geometry is used to inspect bead-scale dose variation relevant to
+# radical-formation studies.
 
 s:Ge/BeadWorld/Type     = "TsBox"
 s:Ge/BeadWorld/Parent   = "World"
@@ -628,13 +627,12 @@ b:Sc/BremsSpec/ReportMean = "True"
 # SECTION 7 — SCORING: LINEAR ENERGY TRANSFER (LET)
 # ==============================================================================
 #
-# The LET spectrum directly governs radical (free radical) yield through
-# the G-value relationship: G(radical) = f(LET).
-# For ND3: Ṅ D2 radicals dominate at low LET; atomic N appears at high LET.
-# Scoring LET allows us to predict the spatial distribution of radical types,
-# which underlies why cold irradiation changes the ND3 polarization — the
-# temperature-dependent diffusion radius of radicals created at low LET
-# differs at 2 K vs. 77 K, affecting DNP transfer efficiency.
+# LET-like quantities provide track-structure context for radical-formation
+# studies through empirical G-value relationships such as G(radical) = f(LET).
+# For ND3, N-D2 radicals are associated with lower-LET conditions while atomic
+# nitrogen contributions are associated with denser ionization regions. These
+# quantities are diagnostic context, not a direct estimate of final DNP
+# performance.
 #
 # We score both track-averaged LET (LETt) and dose-averaged LET (LETd).
 # LETd is the physically relevant quantity for biological/radical systems:
@@ -797,14 +795,14 @@ u:Sc/Conversion/WarmElectronsPerSec   = 6.242e13          # electrons/s = 10 uA 
 u:Sc/Conversion/ColdElectronsPerSec   = 6.242e12          # electrons/s = 1 uA / e
 d:Sc/Conversion/TargetMass            = 0.25 g            # 250 mg target mass
 
-# NOTE TO USER: After simulation, compute:
+# Post-processing note:
 #   AbsoluteDoseRate = Sc/DoseDepth/Mean[i] * Sc/Conversion/WarmElectronsPerSec
 #   HeatLoadW        = AbsoluteDoseRate * Sc/Conversion/TargetMass
 # Compare HeatLoadW against cryostat refrigerator capacity to confirm feasibility.
 
 
 # ==============================================================================
-# SECTION 12 — ADVANCED: PARAMETRIC DOSE SWEEP
+# SECTION 12 — PARAMETRIC DOSE SWEEP
 # ==============================================================================
 #
 # Sweep the cold irradiation current from 0.1 to 10 uA (simulated as a
@@ -863,8 +861,8 @@ d:Gr/View/AxesSize                   = 5.0 cm
 # END OF MAIN SIMULATION FILE
 # ==============================================================================
 #
-# POST-PROCESSING INSTRUCTIONS (Python):
-# --------------------------------------
+# POST-PROCESSING INSTRUCTIONS:
+# -----------------------------
 # After running:
 #   topas DNP_UITF_Irradiation.txt
 #

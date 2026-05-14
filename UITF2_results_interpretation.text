@@ -1,5 +1,5 @@
-UITF2 V2 TOPAS Results: Thesis-Level Interpretation and Validation Guide
-========================================================================
+UITF2 V2 TOPAS Results: Interpretation and Validation Guide
+===========================================================
 
 Purpose
 -------
@@ -18,7 +18,7 @@ Core Research Context
 ---------------------
 Dynamic nuclear polarization requires radiation-induced paramagnetic centers
 in materials such as ND3 and NH3. For an irradiation simulation to support a
-publishable argument, it must show:
+formal technical argument, it must show:
 
 - where dose is deposited in the target volume;
 - whether the dose field becomes acceptable only after front/back exposure;
@@ -57,7 +57,7 @@ Simulation Process
    spectra, secondary photons, and heat-load cross-checks.
 6. Post-processing normalizes summed scorer values by 10M histories, then
    scales to physical fluence/current using the proposal beam conditions.
-7. The thesis-level result is the superposition of the front dose field and
+7. The report-level result is the superposition of the front dose field and
    the target-coordinate-oriented back dose field.
 
 Qualitative Validity Checks
@@ -83,7 +83,7 @@ story:
 
 Quantitative Validity Checks
 ----------------------------
-Before quoting a number in a thesis, proposal update, or paper-style figure,
+Before quoting a number in a report, proposal update, or paper-style figure,
 check the following:
 
 - Confirm each production folder was generated from 10,000,000 histories.
@@ -106,7 +106,7 @@ check the following:
   next to any absolute dose or heat-load number.
 - Compare heat-load estimates from dose-to-mass scaling against the
   TotalEDep_Target.csv scorer; disagreement should be explained before any
-  publication-level claim.
+  formal claim.
 
 Interpretation of Main Outputs
 ------------------------------
@@ -138,18 +138,18 @@ Recommended Workflow
 4. Or run both sides in sequence:
    ./run_UITF2.command
 
-5. Python single-run analysis:
+5. Single-run analysis:
    python3 analyze_DNP_UITF2.py --output_dir UITF_DNP_Output_10M_front
    python3 analyze_DNP_UITF2.py --output_dir UITF_DNP_Output_10M_back
 
-6. MATLAB front/back thesis figures:
+6. MATLAB front/back report figures:
    analyze_DNP_UITF2_MATLAB
 
 7. Confirm the MATLAB console summary reports front/back superposition and
    writes figures to figures_matlab/pptx_deck_assets.
 
-Publication-Level Framing
--------------------------
+Formal Framing
+--------------
 The strongest v2 claim is:
 
     The UITF two-sided 8 MeV electron irradiation protocol can be represented
@@ -161,4 +161,3 @@ The most important caveat is:
     Radical production and polarization performance are inferred through
     dose, fluence, and LET-like proxies; they remain model-dependent until
     benchmarked against measured ESR, dose, temperature, or polarization data.
-

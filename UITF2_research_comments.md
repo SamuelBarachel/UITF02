@@ -31,10 +31,10 @@ The simulation should therefore be judged on two levels:
 Legacy files named `UITF2-100M-front.txt` and `UITF2-100M-back.txt` remain in
 the directory for compatibility, but they now run the v2 10M-per-side protocol.
 
-## Research Comments for Thesis-Style Reporting
+## Research Comments for Manuscript Reporting
 
 The simulation should be written up as a validation chain, not as a figure
-gallery. A strong thesis-style narrative is:
+gallery. A strong manuscript narrative is:
 
 1. Establish the experimental/proposal geometry: beam energy, raster area,
    cryostat, target length, target mass, and material state.
@@ -73,7 +73,7 @@ gallery. A strong thesis-style narrative is:
 - Any radical-yield or LET-like conclusion is identified as a derived model
   proxy, not a direct measurement.
 
-## Suggested Thesis Figure Order
+## Suggested Figure Order
 
 1. Geometry/protocol schematic or annotated TOPAS geometry screenshot.
 2. Front-only and back-only depth-dose profiles.
@@ -100,6 +100,5 @@ Use cautious language for inferred material-response quantities:
 - low-temperature radical stability;
 - LET-weighted chemical effectiveness.
 
-Those inferred quantities become publication-strength only after comparison
-with an experimental benchmark or a clearly cited empirical model.
-
+Those inferred quantities become formal claims only after comparison with an
+experimental benchmark or a clearly cited empirical model.
