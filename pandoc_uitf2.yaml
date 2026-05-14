@@ -1,4 +1,10 @@
 # Pandoc defaults for rendering the UITF2 manuscript from the repository root.
+standalone: true
+metadata:
+  title: "Monte Carlo Assessment of Two-Sided 8 MeV Electron Irradiation of Cryogenic ND3 for Polarized Target Preparation"
+html-math-method: mathjax
+css:
+  - uitf2_manuscript.css
 resource-path:
   - .
   - figures
