@@ -6,7 +6,7 @@
 
 # Monte Carlo Assessment of Two-Sided 8 MeV Electron Irradiation of Cryogenic ND<sub>3</sub> for Polarized Target Preparation
 
-**Journal Manuscript**
+**Project Report**
 
 **Samuel Takwirira**
 
