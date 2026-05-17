@@ -17,9 +17,7 @@ radial coverage, and target heat load.
 - `outputs/manual-20260507-uitf/presentations/uitf-dnp-topas/output/UITF_DNP_TOPAS_MC_Report.pptx`
   is the presentation deck prepared from the analysis figures.
 
-The report includes a University of New Hampshire title page, abstract,
-methods, results and analysis, discussion, conclusion, acknowledgments, data
-availability statement, and references.
+The report includes an abstract,methods, results and analysis, discussion, conclusion, acknowledgments, data availability statement, and references.
 
 ## Key Results
 
@@ -61,9 +59,3 @@ Run the front and back production cards, then run the post-processing scripts:
 The wrapper expects TOPAS and MATLAB to be installed in the application paths
 defined near the top of `run_UITF2.command`. The Python analysis requires
 `numpy`, `pandas`, `matplotlib`, and `scipy`.
-
-## Repository Notes
-
-Local collaboration documents and external reference PDFs are intentionally not
-tracked in this public repository. The cited literature remains listed in the
-report references.
