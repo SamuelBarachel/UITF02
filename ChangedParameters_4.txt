@@ -1,0 +1,10 @@
+# To restore TOPAS to state GUI had on Wed May 20 22:44:18 2026
+
+includeFile = UITF2G-050426.txt
+
+d:Gr/ViewA/Phi = 156.073 deg
+d:Gr/ViewA/TargetPointX = 0 mm
+d:Gr/ViewA/TargetPointY = 0 mm
+d:Gr/ViewA/TargetPointZ = 0 mm
+d:Gr/ViewA/Theta = 124.096 deg
+u:Gr/ViewA/Zoom = 1.4

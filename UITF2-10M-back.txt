@@ -3,8 +3,8 @@
 
 includeFile = UITF2-050426.txt
 
-i:Ts/NumberOfHistoriesInRun = 10000000
+i:Ts/NumberOfHistoriesInRun = 100000000
 i:So/Beam/NumberOfHistoriesInRun = 0
-i:So/BackBeam/NumberOfHistoriesInRun = 10000000
+i:So/BackBeam/NumberOfHistoriesInRun = 100000000
 i:Ts/ShowHistoryCountAtInterval = 100000
 s:Ts/OutputDirectory = "./UITF_DNP_Output_10M_back"

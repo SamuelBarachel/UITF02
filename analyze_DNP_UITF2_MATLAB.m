@@ -50,6 +50,8 @@ figDir = fullfile(scriptDir, "figures_matlab");
 if ~exist(figDir, "dir"), mkdir(figDir); end
 singleFigDir = fullfile(figDir, "pptx_deck_assets");
 if ~exist(singleFigDir, "dir"), mkdir(singleFigDir); end
+exportDpi = 450;                    % high-resolution slide assets for PPTX
+exportCanvas = [100 100 1600 900];  % 16:9 presentation frame
 
 % Bright, high-contrast presentation palette. Every text and axes color is set
 % explicitly so MATLAB dark mode cannot make titles or labels disappear.
@@ -257,10 +259,44 @@ else
     lg = legend(axS, "Front run", "Back run", "Front + back combined", "Location", "best");
 end
 styleLegend(lg, pal);
-saveAxesCopy(axS, singleFigDir, "01_front_back_superimposed_cold_dose");
+saveAxesCopy(axS, singleFigDir, "01_front_back_superimposed_cold_dose", exportCanvas, exportDpi);
 
-% 2. Combined cold dose-depth profile tab.
-axS = nextPlotTab(tabGroup, "02 Cold Dose", pal);
+% 2. Separate single-side cold irradiation tab.
+axS = nextPlotTab(tabGroup, "02 Cold Single", pal);
+plot(axS, zMm, frontCold.cumulativeGy, "LineWidth", 3.4, "Color", pal.coldFront); hold(axS, "on");
+plot(axS, zMm, backCold.cumulativeGy, "--", "LineWidth", 3.4, "Color", pal.coldBack);
+xline(axS, csdaRangeCm * 10, "--", "CSDA", "Color", pal.reference, "LineWidth", 1.8);
+xlabel(axS, "Position in target from incident face (mm)", "Color", pal.ink);
+ylabel(axS, "Cold single-irradiation dose (Gy)", "Color", pal.ink);
+title(axS, "Cold Single-Irradiation Cases, Plotted Separately", "Color", pal.coldFront, "FontWeight", "bold");
+styleAxes(axS, pal);
+if isempty(back)
+    lg = legend(axS, "Front-only cold case", "Mirrored-front cold estimate", "CSDA range marker", "Location", "best");
+else
+    lg = legend(axS, "Front-only cold case", "Back-only cold case", "CSDA range marker", "Location", "best");
+end
+styleLegend(lg, pal);
+saveAxesCopy(axS, singleFigDir, "02_single_irradiation_cold_front_back", exportCanvas, exportDpi);
+
+% 3. Separate single-side warm irradiation tab.
+axS = nextPlotTab(tabGroup, "03 Warm Single", pal);
+plot(axS, zMm, frontWarm.cumulativeGy, "LineWidth", 3.4, "Color", pal.warmFront); hold(axS, "on");
+plot(axS, zMm, backWarm.cumulativeGy, "--", "LineWidth", 3.4, "Color", pal.warmBack);
+xline(axS, csdaRangeCm * 10, "--", "CSDA", "Color", pal.reference, "LineWidth", 1.8);
+xlabel(axS, "Position in target from incident face (mm)", "Color", pal.ink);
+ylabel(axS, "Warm single-irradiation dose (Gy)", "Color", pal.ink);
+title(axS, "Warm Single-Irradiation Cases, Plotted Separately", "Color", pal.warmFront, "FontWeight", "bold");
+styleAxes(axS, pal);
+if isempty(back)
+    lg = legend(axS, "Front-only warm case", "Mirrored-front warm estimate", "CSDA range marker", "Location", "best");
+else
+    lg = legend(axS, "Front-only warm case", "Back-only warm case", "CSDA range marker", "Location", "best");
+end
+styleLegend(lg, pal);
+saveAxesCopy(axS, singleFigDir, "03_single_irradiation_warm_front_back", exportCanvas, exportDpi);
+
+% 4. Combined cold dose-depth profile tab.
+axS = nextPlotTab(tabGroup, "04 Cold Combined", pal);
 plot(axS, zMm, combinedCold.cumulativeGy, "LineWidth", 4.0, "Color", pal.combined); hold(axS, "on");
 xline(axS, csdaRangeCm * 10, "--", "CSDA", "Color", pal.reference, "LineWidth", 1.8);
 xline(axS, cfg.targetLengthCm * 5, ":", "Flip midpoint", "Color", pal.reference, "LineWidth", 1.8);
@@ -268,16 +304,20 @@ xlabel(axS, "Depth in target (mm)", "Color", pal.ink);
 ylabel(axS, "Cold cumulative dose, front + back (Gy)", "Color", pal.ink);
 title(axS, "Combined Cold Dose-Depth Profile", "Color", pal.combined, "FontWeight", "bold");
 styleAxes(axS, pal);
-saveAxesCopy(axS, singleFigDir, "02_combined_cold_dose_depth");
+lg = legend(axS, "Front + back cold cumulative dose", "CSDA range marker", "Target midpoint / flip plane", "Location", "best");
+styleLegend(lg, pal);
+saveAxesCopy(axS, singleFigDir, "04_combined_cold_dose_depth", exportCanvas, exportDpi);
 
-% 3. Superimposed 2D dose map tab, if available.
+% 5. Superimposed 2D dose map tab, if available.
 if ~isempty(combinedDoseMapGyPerPrimary)
-    axS = nextPlotTab(tabGroup, "03 Dose Map", pal);
-    imagesc(axS, zMm, front.rMm, combinedDoseMapGyPerPrimary);
+    axS = nextPlotTab(tabGroup, "05 Dose Map", pal);
+    combinedColdDoseMapGy = combinedDoseMapGyPerPrimary .* ...
+        (cfg.coldCurrentUA * 1.0e-6 / cfg.eChargeC) .* irradiationTimeSeconds("cold", 1, cfg);
+    imagesc(axS, zMm, front.rMm, combinedColdDoseMapGy);
     set(axS, "YDir", "normal");
     colormap(axS, turbo);
     cb = colorbar(axS);
-    cb.Label.String = "DoseToMedium, front + back (Gy / primary)";
+    cb.Label.String = "Dose (Gy)";
     cb.Label.Color = pal.ink;
     cb.Color = pal.ink;
     xlabel(axS, "Depth z (mm)", "Color", pal.ink);
@@ -286,26 +326,55 @@ if ~isempty(combinedDoseMapGyPerPrimary)
     styleAxes(axS, pal);
     text(axS, 0.02, 0.96, doseMapNote, "Units", "normalized", ...
         "Color", pal.ink, "FontWeight", "bold", "BackgroundColor", pal.panel);
-    saveAxesCopy(axS, singleFigDir, "03_2d_dose_map_superimposed");
+    saveAxesCopy(axS, singleFigDir, "05_2d_dose_map_superimposed_cold", exportCanvas, exportDpi);
+
+    % 6. 3D combined R-Z dose presentation.
+    axS = nextPlotTab(tabGroup, "06 3D R-Z Dose", pal);
+    [zGrid, rGrid] = meshgrid(zMm, front.rMm);
+    surf(axS, zGrid, rGrid, combinedColdDoseMapGy, "EdgeColor", "none", "FaceColor", "interp");
+    hold(axS, "on");
+    contour3(axS, zGrid, rGrid, combinedColdDoseMapGy, 10, "LineColor", pal.edge, "LineWidth", 0.8);
+    colormap(axS, turbo);
+    cb = colorbar(axS);
+    cb.Label.String = "Cold cumulative dose, front + back (Gy)";
+    cb.Label.Color = pal.ink;
+    cb.Color = pal.ink;
+    xlabel(axS, "Depth z (mm)", "Color", pal.ink);
+    ylabel(axS, "r (mm)", "Color", pal.ink);
+    zlabel(axS, "Dose (Gy)", "Color", pal.ink);
+    title(axS, "3D Combined R-Z Dose Presentation", "Color", pal.warmFront, "FontWeight", "bold");
+    view(axS, 42, 28);
+    styleAxes(axS, pal);
+    shading(axS, "interp");
+    axS.FontSize = 10;
+    axS.XLabel.FontSize = 12;
+    axS.YLabel.FontSize = 12;
+    axS.ZLabel.FontSize = 12;
+    axS.Title.FontSize = 17;
+    lg = legend(axS, "Combined R-Z dose surface", "Dose contour lines", "Location", "northeast");
+    styleLegend(lg, pal);
+    saveAxesCopy(axS, singleFigDir, "06_3d_combined_rz_dose_surface_cold", exportCanvas, exportDpi, [0.12 0.16 0.68 0.70]);
 end
 
-% 4. Electron fluence depth tab.
+% 7. Electron fluence depth tab.
 if ~isempty(combinedElectronFluence)
-    axS = nextPlotTab(tabGroup, "04 e- Fluence", pal);
+    axS = nextPlotTab(tabGroup, "07 e- Fluence", pal);
     plot(axS, zMm, combinedElectronFluence, "LineWidth", 3.4, "Color", pal.barBlue);
     xlabel(axS, "Depth in target (mm)", "Color", pal.ink);
     ylabel(axS, "Electron fluence (/mm2 per primary)", "Color", pal.ink);
     title(axS, "Electron Fluence Depth Profile, Not Normalized", "Color", pal.barBlue, "FontWeight", "bold");
     styleAxes(axS, pal);
+    lg = legend(axS, "Front + back electron fluence", "Location", "best");
+    styleLegend(lg, pal);
     text(axS, 0.02, 0.96, electronFluenceNote, "Units", "normalized", ...
         "Color", pal.ink, "FontWeight", "bold", "BackgroundColor", pal.panel);
-    saveAxesCopy(axS, singleFigDir, "04_electron_fluence_depth_unnormalized");
+    saveAxesCopy(axS, singleFigDir, "07_electron_fluence_depth_unnormalized", exportCanvas, exportDpi);
 end
 
-% 5. Material electron density tab.
+% 8. Material electron density tab.
 electronDensityPacked = repmat(cfg.packedND3ElectronDensityCm3, size(zMm));
 electronDensitySolid = repmat(cfg.solidND3ElectronDensityCm3, size(zMm));
-axS = nextPlotTab(tabGroup, "05 e- Density", pal);
+axS = nextPlotTab(tabGroup, "08 e- Density", pal);
 semilogy(axS, zMm, electronDensityPacked, "LineWidth", 3.6, "Color", pal.combined); hold(axS, "on");
 semilogy(axS, zMm, electronDensitySolid, "--", "LineWidth", 2.8, "Color", pal.coldBack);
 xlabel(axS, "Depth in target (mm)", "Color", pal.ink);
@@ -316,11 +385,11 @@ lg = legend(axS, "Packed ND3 target volume", "Solid ND3 material reference", "Lo
 styleLegend(lg, pal);
 text(axS, 0.02, 0.18, "Computed from ND3 composition, density, and Avogadro's number; not normalized.", ...
     "Units", "normalized", "Color", pal.ink, "FontWeight", "bold", "BackgroundColor", pal.panel);
-saveAxesCopy(axS, singleFigDir, "05_material_electron_density_unnormalized");
+saveAxesCopy(axS, singleFigDir, "08_material_electron_density_unnormalized", exportCanvas, exportDpi);
 
-% 6. Lateral dose uniformity tab using the raw scorer values.
+% 9. Lateral dose uniformity tab using the raw scorer values.
 if ~isempty(front.radialDoseGyPerPrimary)
-    axS = nextPlotTab(tabGroup, "06 Uniformity", pal);
+    axS = nextPlotTab(tabGroup, "09 Uniformity", pal);
     radialMean = mean(front.radialDoseGyPerPrimary, "omitnan");
     plot(axS, front.radialMm, front.radialDoseGyPerPrimary, "o-", "LineWidth", 3.2, ...
         "MarkerSize", 7, "Color", pal.coldFront, "MarkerFaceColor", pal.coldFront); hold(axS, "on");
@@ -332,11 +401,11 @@ if ~isempty(front.radialDoseGyPerPrimary)
     styleAxes(axS, pal);
     lg = legend(axS, "Raw radial dose", "+5% of mean", "-5% of mean", "Location", "best");
     styleLegend(lg, pal);
-    saveAxesCopy(axS, singleFigDir, "06_lateral_dose_uniformity_raw");
+    saveAxesCopy(axS, singleFigDir, "09_lateral_dose_uniformity_raw", exportCanvas, exportDpi);
 end
 
-% 7. Electron and photon spectra tab.
-axS = nextPlotTab(tabGroup, "07 Spectra", pal);
+% 10. Electron and photon spectra tab.
+axS = nextPlotTab(tabGroup, "10 Spectra", pal);
 eCenters = linspace(0, 8.1, 160);
 plotSpectrum(axS, eCenters, front.energySpecIn, pal.coldFront); hold(axS, "on");
 plotSpectrum(axS, eCenters, front.bremsSpecExit, pal.warmFront);
@@ -347,10 +416,10 @@ title(axS, "Electron Entrance and Bremsstrahlung Spectra", "Color", pal.combined
 styleAxes(axS, pal);
 lg = legend(axS, "Entrance electrons", "Exit photons", "Nominal beam energy", "Location", "best");
 styleLegend(lg, pal);
-saveAxesCopy(axS, singleFigDir, "07_energy_spectra");
+saveAxesCopy(axS, singleFigDir, "10_energy_spectra", exportCanvas, exportDpi);
 
-% 8. Heat load versus beam current tab.
-axS = nextPlotTab(tabGroup, "08 Heat", pal);
+% 11. Heat load versus beam current tab.
+axS = nextPlotTab(tabGroup, "11 Heat", pal);
 currentsUA = logspace(-1, 1, 80);
 heatCurveW = arrayfun(@(I) heatLoadFromEDep(front.totalEdepMeVPerPrimary, I, cfg), currentsUA);
 loglog(axS, currentsUA, heatCurveW, "LineWidth", 3.4, "Color", pal.warmFront); hold(axS, "on");
@@ -362,10 +431,13 @@ xlabel(axS, "Beam current (uA)", "Color", pal.ink);
 ylabel(axS, "Target heat load per side (W)", "Color", pal.ink);
 title(axS, "Target Heat Load vs. Beam Current", "Color", pal.warmFront, "FontWeight", "bold");
 styleAxes(axS, pal);
-saveAxesCopy(axS, singleFigDir, "08_heat_load_vs_current");
+lg = legend(axS, "Heat-load model from target energy deposition", "0.1 W cooling reference", ...
+    "0.5 W cooling reference", "Cold operating current", "Warm operating current", "Location", "best");
+styleLegend(lg, pal);
+saveAxesCopy(axS, singleFigDir, "11_heat_load_vs_current", exportCanvas, exportDpi);
 
-% 9. Acronym and interpretation notes tab.
-axS = nextPlotTab(tabGroup, "09 Acronyms", pal);
+% 12. Acronym and interpretation notes tab.
+axS = nextPlotTab(tabGroup, "12 Acronyms", pal);
 axis(axS, "off");
 notes = [
     "Acronyms and terms used in this analysis"
@@ -387,7 +459,7 @@ notes = [
 ];
 text(axS, 0.03, 0.97, notes, "Units", "normalized", "VerticalAlignment", "top", ...
     "Color", pal.ink, "FontWeight", "bold", "FontSize", 12, "Interpreter", "none");
-saveAxesCopy(axS, singleFigDir, "09_acronyms_and_interpretation_notes");
+saveAxesCopy(axS, singleFigDir, "12_acronyms_and_interpretation_notes", exportCanvas, exportDpi);
 
 savefig(figTabs, fullfile(singleFigDir, "UITF2_tabbed_pptx_figure_browser.fig"));
 fprintf("PPTX tabbed figure browser written to: %s\n", fullfile(singleFigDir, "UITF2_tabbed_pptx_figure_browser.fig"));
@@ -637,14 +709,41 @@ function ax = nextPlotTab(tabGroup, tabTitle, pal)
     ax.Color = pal.panel;
 end
 
-function saveAxesCopy(ax, outputDir, baseName)
+function saveAxesCopy(ax, outputDir, baseName, exportCanvas, exportDpi, axesPosition)
     % Axes inside inactive uitabs are not always accepted by exportgraphics
     % on all MATLAB releases. Copy the axes into a hidden figure for export
     % so the user sees only the tabbed browser window.
+    if nargin < 4 || isempty(exportCanvas)
+        exportCanvas = [100 100 1600 900];
+    end
+    if nargin < 5 || isempty(exportDpi)
+        exportDpi = 450;
+    end
+    if nargin < 6 || isempty(axesPosition)
+        axesPosition = [0.13 0.14 0.74 0.76];
+    end
     tempFig = figure("Visible", "off", "Color", ax.Parent.BackgroundColor, ...
-        "InvertHardcopy", "off", "Position", [100 100 980 720]);
+        "InvertHardcopy", "off", "Position", exportCanvas);
     tempAx = copyobj(ax, tempFig);
-    set(tempAx, "Units", "normalized", "Position", [0.15 0.13 0.76 0.78]);
+    set(tempAx, "Units", "normalized", "Position", axesPosition);
+
+    oldLegends = findall(ax.Parent, "Type", "Legend");
+    if ~isempty(oldLegends)
+        for i = 1:numel(oldLegends)
+            try
+                if oldLegends(i).Axes == ax
+                    tempLg = legend(tempAx, oldLegends(i).String, ...
+                        "Location", oldLegends(i).Location);
+                    tempLg.Color = oldLegends(i).Color;
+                    tempLg.TextColor = oldLegends(i).TextColor;
+                    tempLg.EdgeColor = oldLegends(i).EdgeColor;
+                    tempLg.LineWidth = oldLegends(i).LineWidth;
+                end
+            catch
+            end
+        end
+    end
+
     oldColorbars = findall(ax.Parent, "Type", "ColorBar");
     if ~isempty(oldColorbars)
         for i = 1:numel(oldColorbars)
@@ -659,8 +758,10 @@ function saveAxesCopy(ax, outputDir, baseName)
             end
         end
     end
-    exportgraphics(tempFig, fullfile(outputDir, baseName + ".png"), "Resolution", 300);
-    close(tempFig);
+    exportgraphics(tempFig, fullfile(outputDir, baseName + ".png"), "Resolution", exportDpi);
+    % Leave the hidden export figure alive until MATLAB exits. Some MATLAB
+    % releases can invalidate uitab parents when copied tab axes are closed
+    % repeatedly during a batch export.
 end
 
 function styleAxes(ax, pal)

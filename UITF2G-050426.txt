@@ -15,8 +15,10 @@
 #   - TOPAS/OpenGL opens a GUI window, so run this from a normal terminal session
 #     on the Mac desktop.
 #   - The main simulation file remains UITF2-050426.txt.
-#   - This wrapper uses one history only. Trajectory drawing is off by default
-#     because macOS Qt/OpenGL builds can crash on exit when track storage is on.
+#   - This wrapper uses a small 20-history event sample so the OpenGL view can
+#     show representative particle trajectories and secondary-production effects.
+#   - If a local macOS Qt/OpenGL build crashes on exit, temporarily set
+#     Gr/ViewA/IncludeTrajectories and IncludeStepPoints back to False.
 # ==============================================================================
 
 includeFile = UITF2-050426.txt
@@ -24,11 +26,11 @@ includeFile = UITF2-050426.txt
 # Keep geometry-view output separate from real simulation output.
 s:Ts/OutputDirectory = "./UITF_Geometry_Output"
 
-# Keep the viewer quick and quiet.
+# Keep the viewer quick but physically illustrative.
 i:Ts/NumberOfThreads = 1
-i:Ts/NumberOfHistoriesInRun = 1
-i:So/Beam/NumberOfHistoriesInRun = 1
-i:So/BackBeam/NumberOfHistoriesInRun = 1
+i:Ts/NumberOfHistoriesInRun = 20
+i:So/Beam/NumberOfHistoriesInRun = 20
+i:So/BackBeam/NumberOfHistoriesInRun = 0
 i:Ts/TrackingVerbosity = 0
 i:Ts/ShowHistoryCountAtInterval = 1
 b:Ts/PauseBeforeInit = "False"
@@ -80,9 +82,9 @@ s:Gr/ViewA/Type = "OpenGL"
 i:Gr/ViewA/WindowSizeX = 1100
 i:Gr/ViewA/WindowSizeY = 900
 b:Gr/ViewA/IncludeGeometry = "True"
-b:Gr/ViewA/IncludeTrajectories = "False"
-b:Gr/ViewA/IncludeStepPoints = "False"
-b:Gr/ViewA/IncludeAxes = "False"
+b:Gr/ViewA/IncludeTrajectories = "True"
+b:Gr/ViewA/IncludeStepPoints = "True"
+b:Gr/ViewA/IncludeAxes = "True"
 s:Gr/ViewA/AxesComponent = "World"
 d:Gr/ViewA/AxesSize = 1.0 cm
 b:Gr/ViewA/HiddenLineRemovalForGeometry = "False"
