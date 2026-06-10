@@ -46,7 +46,6 @@ The report includes an abstract,methods, results and analysis, discussion, concl
 
 ## Figure Preview
 
-![Front, back, and combined cold cumulative dose profiles](figures_matlab/pptx_deck_assets/01_front_back_superimposed_cold_dose.png)
 
 ## Reproducing the Analysis
 
