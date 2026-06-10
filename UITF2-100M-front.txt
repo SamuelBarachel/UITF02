@@ -1,6 +1,6 @@
 # Front-side 10M production wrapper for the proposal front+back protocol.
 # Legacy filename retained so older launch shortcuts still run the v2 protocol.
-# Run this file for the beam entering the upstream/front face of the target.
+# Run for the beam entering the upstream/front face of the target.
 
 includeFile = UITF2-050426.txt
 
